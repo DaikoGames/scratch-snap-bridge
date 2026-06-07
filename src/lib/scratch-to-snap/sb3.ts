@@ -91,7 +91,6 @@ export async function parseSb3(arrayBuffer: ArrayBuffer): Promise<IRProject> {
     targets: Sb3Target[];
   };
 
-  const warnings = new Set<string>();
   const targets: IRTarget[] = [];
 
   for (const t of json.targets) {
@@ -117,7 +116,7 @@ export async function parseSb3(arrayBuffer: ArrayBuffer): Promise<IRProject> {
     }));
 
     const blocks = t.blocks as Record<string, Sb3Block>;
-    const scripts = parseScripts(blocks, warnings);
+    const scripts = parseScripts(blocks);
 
     targets.push({
       name: t.name,
@@ -138,29 +137,22 @@ export async function parseSb3(arrayBuffer: ArrayBuffer): Promise<IRProject> {
 
   const stage = targets.find((t) => t.isStage)!;
   const sprites = targets.filter((t) => !t.isStage);
-  return { stage, sprites, warnings: [...warnings] };
+  return { stage, sprites, warnings: [] };
 }
 
-function parseScripts(
-  blocks: Record<string, Sb3Block>,
-  warnings: Set<string>,
-): IRScript[] {
+function parseScripts(blocks: Record<string, Sb3Block>): IRScript[] {
   const scripts: IRScript[] = [];
   for (const [id, b] of Object.entries(blocks)) {
     if (!b || Array.isArray(b)) continue;
     if (!b.topLevel) continue;
     if (b.shadow) continue;
-    const stack = buildStack(id, blocks, warnings);
+    const stack = buildStack(id, blocks);
     scripts.push({ x: b.x ?? 0, y: b.y ?? 0, blocks: stack });
   }
   return scripts;
 }
 
-function buildStack(
-  startId: string,
-  blocks: Record<string, Sb3Block>,
-  warnings: Set<string>,
-): IRBlock[] {
+function buildStack(startId: string, blocks: Record<string, Sb3Block>): IRBlock[] {
   const out: IRBlock[] = [];
   let cur: string | null = startId;
   const seen = new Set<string>();
@@ -168,29 +160,24 @@ function buildStack(
     seen.add(cur);
     const b: Sb3Block | unknown[] | undefined = blocks[cur];
     if (!b || Array.isArray(b)) break;
-    out.push(buildBlock(cur, blocks, warnings));
+    out.push(buildBlock(cur, blocks));
     cur = (b as Sb3Block).next;
   }
   return out;
 }
 
-function buildBlock(
-  id: string,
-  blocks: Record<string, Sb3Block>,
-  warnings: Set<string>,
-): IRBlock {
+function buildBlock(id: string, blocks: Record<string, Sb3Block>): IRBlock {
   const b = blocks[id] as Sb3Block;
-  warnings.add(b.opcode);
 
   const inputs: Record<string, IRArg> = {};
   const branches: Record<string, IRBlock[]> = {};
   for (const [name, raw] of Object.entries(b.inputs || {})) {
     if (name === "SUBSTACK" || name === "SUBSTACK2") {
       const blockId = extractBlockId(raw);
-      branches[name] = blockId ? buildStack(blockId, blocks, warnings) : [];
+      branches[name] = blockId ? buildStack(blockId, blocks) : [];
       continue;
     }
-    inputs[name] = extractInputValue(raw, blocks, warnings);
+    inputs[name] = extractInputValue(raw, blocks);
   }
 
   const fields: Record<string, string> = {};
@@ -234,7 +221,6 @@ function extractBlockId(raw: unknown): string | null {
 function extractInputValue(
   raw: unknown,
   blocks: Record<string, Sb3Block>,
-  warnings: Set<string>,
 ): IRArg {
   if (!Array.isArray(raw)) return "";
   const inner = raw[1];
@@ -249,7 +235,7 @@ function extractInputValue(
         return String((fieldVals[0] as unknown[])[0] ?? "");
       }
     }
-    return buildBlock(inner, blocks, warnings);
+    return buildBlock(inner, blocks);
   }
   if (Array.isArray(inner)) {
     // Literal shadow: [type, value, ...]

@@ -165,10 +165,10 @@ function buildStack(
   const seen = new Set<string>();
   while (cur && !seen.has(cur)) {
     seen.add(cur);
-    const b = blocks[cur];
+    const b: Sb3Block | unknown[] | undefined = blocks[cur];
     if (!b || Array.isArray(b)) break;
     out.push(buildBlock(cur, blocks, warnings));
-    cur = b.next;
+    cur = (b as Sb3Block).next;
   }
   return out;
 }

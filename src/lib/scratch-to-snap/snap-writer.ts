@@ -38,13 +38,25 @@ export function projectToSnapXml(project: IRProject, projectName: string): strin
     "project",
     { name: projectName, app: SNAP_APP, version: SNAP_VERSION },
     el("notes", {}, buildNotes(project)),
-    buildStage(project),
+    el("thumbnail", {}),
+    el("scenes", { select: 1 }, buildScene(project, projectName)),
+  );
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${root.toString()}`;
+}
+
+function buildScene(project: IRProject, projectName: string): XmlNode {
+  return el(
+    "scene",
+    { name: projectName, version: SNAP_VERSION },
+    el("notes", {}, buildNotes(project)),
     el("hidden", {}),
     el("headers", {}),
     el("code", {}),
     el("blocks", {}),
+    el("primitives", {}),
+    buildStage(project),
+    el("variables", {}),
   );
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${root.toString()}`;
 }
 
 function buildNotes(project: IRProject): string {

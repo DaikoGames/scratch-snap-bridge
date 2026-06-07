@@ -108,7 +108,7 @@ function buildCostumes(target: IRTarget): XmlNode {
   for (const c of target.costumes) {
     const item = el("costume", {
       name: c.name,
-      center-x: c.rotationCenterX ?? 0,
+      "center-x": c.rotationCenterX ?? 0,
       "center-y": c.rotationCenterY ?? 0,
       image: c.dataUrl,
     });

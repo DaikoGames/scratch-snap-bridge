@@ -1,234 +1,110 @@
-// Mapping from Scratch (sb2 op names and sb3 opcodes) to Snap! block selectors.
-// Snap! uses XML <block s="selector"> with child nodes for inputs.
-//
-// This is an MVP mapping covering common Motion / Looks / Sound / Events /
-// Control / Sensing / Operators / Variables blocks. Unknown blocks become
-// a Snap comment-style placeholder so the project still loads.
+// Scratch 3 opcode -> Snap! selector mapping for simple 1:1 blocks.
+// Each entry lists which Scratch input/field slots feed Snap's positional args,
+// in the order Snap expects them. Anything more complex than this lives as a
+// custom handler in snap-writer.ts.
 
-export interface SnapBlockSpec {
-  // Snap selector (the s="..." attribute) or special tag like "reporter:..."
+export interface SimpleSpec {
   selector: string;
-  // How to map ordered Scratch arguments to Snap inputs.
-  // Each entry references an arg index from the Scratch block.
-  // If omitted, args are passed positionally in order.
-  argOrder?: number[];
+  // Names of Scratch input/field slots, in Snap arg order.
+  slots?: string[];
 }
 
-// sb3 opcode -> snap selector. The sb2 op name is the same word after the
-// category prefix in most cases; we keep a second table below.
-export const sb3OpcodeMap: Record<string, SnapBlockSpec> = {
+export const simpleMap: Record<string, SimpleSpec> = {
   // Motion
-  motion_movesteps: { selector: "forward" },
-  motion_turnright: { selector: "turn" },
-  motion_turnleft: { selector: "turnLeft" },
-  motion_pointindirection: { selector: "setHeading" },
-  motion_gotoxy: { selector: "gotoXY" },
-  motion_glidesecstoxy: { selector: "doGlide" },
-  motion_changexby: { selector: "changeXPosition" },
-  motion_setx: { selector: "setXPosition" },
-  motion_changeyby: { selector: "changeYPosition" },
-  motion_sety: { selector: "setYPosition" },
+  motion_movesteps: { selector: "forward", slots: ["STEPS"] },
+  motion_turnright: { selector: "turn", slots: ["DEGREES"] },
+  motion_turnleft: { selector: "turnLeft", slots: ["DEGREES"] },
+  motion_pointindirection: { selector: "setHeading", slots: ["DIRECTION"] },
+  motion_gotoxy: { selector: "gotoXY", slots: ["X", "Y"] },
+  motion_glidesecstoxy: { selector: "doGlide", slots: ["SECS", "X", "Y"] },
+  motion_changexby: { selector: "changeXPosition", slots: ["DX"] },
+  motion_setx: { selector: "setXPosition", slots: ["X"] },
+  motion_changeyby: { selector: "changeYPosition", slots: ["DY"] },
+  motion_sety: { selector: "setYPosition", slots: ["Y"] },
   motion_ifonedgebounce: { selector: "bounceOffEdge" },
   motion_xposition: { selector: "xPosition" },
   motion_yposition: { selector: "yPosition" },
   motion_direction: { selector: "direction" },
 
   // Looks
-  looks_sayforsecs: { selector: "doSayFor" },
-  looks_say: { selector: "bubble" },
-  looks_thinkforsecs: { selector: "doThinkFor" },
-  looks_think: { selector: "doThink" },
+  looks_sayforsecs: { selector: "doSayFor", slots: ["MESSAGE", "SECS"] },
+  looks_say: { selector: "bubble", slots: ["MESSAGE"] },
+  looks_thinkforsecs: { selector: "doThinkFor", slots: ["MESSAGE", "SECS"] },
+  looks_think: { selector: "doThink", slots: ["MESSAGE"] },
   looks_show: { selector: "show" },
   looks_hide: { selector: "hide" },
-  looks_switchcostumeto: { selector: "doSwitchToCostume" },
+  looks_switchcostumeto: { selector: "doSwitchToCostume", slots: ["COSTUME"] },
   looks_nextcostume: { selector: "doWearNextCostume" },
-  looks_changesizeby: { selector: "changeScale" },
-  looks_setsizeto: { selector: "setScale" },
+  looks_switchbackdropto: { selector: "doSwitchToCostume", slots: ["BACKDROP"] },
+  looks_nextbackdrop: { selector: "doWearNextCostume" },
+  looks_changesizeby: { selector: "changeScale", slots: ["CHANGE"] },
+  looks_setsizeto: { selector: "setScale", slots: ["SIZE"] },
   looks_size: { selector: "getScale" },
   looks_costumenumbername: { selector: "getCostumeIdx" },
+  looks_backdropnumbername: { selector: "getCostumeIdx" },
 
   // Sound
-  sound_play: { selector: "playSound" },
-  sound_playuntildone: { selector: "doPlaySoundUntilDone" },
+  sound_play: { selector: "playSound", slots: ["SOUND_MENU"] },
+  sound_playuntildone: { selector: "doPlaySoundUntilDone", slots: ["SOUND_MENU"] },
   sound_stopallsounds: { selector: "doStopAllSounds" },
+  sound_changevolumeby: { selector: "changeVolume", slots: ["VOLUME"] },
+  sound_setvolumeto: { selector: "setVolume", slots: ["VOLUME"] },
+  sound_volume: { selector: "getVolume" },
 
-  // Pen (Snap has these in the "pen" category)
+  // Pen
   pen_clear: { selector: "clear" },
   pen_stamp: { selector: "doStamp" },
   pen_penDown: { selector: "down" },
   pen_penUp: { selector: "up" },
-  pen_setPenColorToColor: { selector: "setColor" },
-  pen_changePenSizeBy: { selector: "changeSize" },
-  pen_setPenSizeTo: { selector: "setSize" },
+  pen_setPenColorToColor: { selector: "setColor", slots: ["COLOR"] },
+  pen_changePenSizeBy: { selector: "changeSize", slots: ["SIZE"] },
+  pen_setPenSizeTo: { selector: "setSize", slots: ["SIZE"] },
 
-  // Events / hats
+  // Events
   event_whenflagclicked: { selector: "receiveGo" },
-  event_whenkeypressed: { selector: "receiveKey" },
-  event_whenthisspriteclicked: { selector: "receiveInteraction" },
-  event_whenbroadcastreceived: { selector: "receiveMessage" },
-  event_broadcast: { selector: "doBroadcast" },
-  event_broadcastandwait: { selector: "doBroadcastAndWait" },
+  event_whenkeypressed: { selector: "receiveKey", slots: ["KEY_OPTION"] },
+  event_whenthisspriteclicked: { selector: "receiveInteraction", slots: [] },
+  event_whenstageclicked: { selector: "receiveInteraction", slots: [] },
+  event_whenbroadcastreceived: { selector: "receiveMessage", slots: ["BROADCAST_OPTION"] },
+  event_broadcast: { selector: "doBroadcast", slots: ["BROADCAST_INPUT"] },
+  event_broadcastandwait: { selector: "doBroadcastAndWait", slots: ["BROADCAST_INPUT"] },
 
   // Control
-  control_wait: { selector: "doWait" },
-  control_repeat: { selector: "doRepeat" },
-  control_forever: { selector: "doForever" },
-  control_if: { selector: "doIf" },
-  control_if_else: { selector: "doIfElse" },
-  control_wait_until: { selector: "doWaitUntil" },
-  control_repeat_until: { selector: "doUntil" },
-  control_stop: { selector: "doStopThis" },
-  control_create_clone_of: { selector: "createClone" },
+  control_wait: { selector: "doWait", slots: ["DURATION"] },
+  control_wait_until: { selector: "doWaitUntil", slots: ["CONDITION"] },
+  control_stop: { selector: "doStopThis", slots: ["STOP_OPTION"] },
   control_delete_this_clone: { selector: "removeClone" },
 
   // Sensing
-  sensing_askandwait: { selector: "doAsk" },
+  sensing_askandwait: { selector: "doAsk", slots: ["QUESTION"] },
   sensing_answer: { selector: "getLastAnswer" },
-  sensing_keypressed: { selector: "reportKeyPressed" },
+  sensing_keypressed: { selector: "reportKeyPressed", slots: ["KEY_OPTION"] },
   sensing_mousedown: { selector: "reportMouseDown" },
   sensing_mousex: { selector: "reportMouseX" },
   sensing_mousey: { selector: "reportMouseY" },
   sensing_timer: { selector: "getTimer" },
   sensing_resettimer: { selector: "doResetTimer" },
+  sensing_touchingobject: { selector: "reportTouchingObject", slots: ["TOUCHINGOBJECTMENU"] },
+  sensing_touchingcolor: { selector: "reportTouchingColor", slots: ["COLOR"] },
+  sensing_coloristouchingcolor: { selector: "reportColorIsTouchingColor", slots: ["COLOR", "COLOR2"] },
+  sensing_distanceto: { selector: "reportDistanceTo", slots: ["DISTANCETOMENU"] },
 
   // Operators
-  operator_add: { selector: "reportSum" },
-  operator_subtract: { selector: "reportDifference" },
-  operator_multiply: { selector: "reportProduct" },
-  operator_divide: { selector: "reportQuotient" },
-  operator_random: { selector: "reportRandom" },
-  operator_gt: { selector: "reportGreaterThan" },
-  operator_lt: { selector: "reportLessThan" },
-  operator_equals: { selector: "reportEquals" },
-  operator_and: { selector: "reportAnd" },
-  operator_or: { selector: "reportOr" },
-  operator_not: { selector: "reportNot" },
-  operator_join: { selector: "reportJoinWords" },
-  operator_letter_of: { selector: "reportLetter" },
-  operator_length: { selector: "reportStringSize" },
-  operator_mod: { selector: "reportModulus" },
-  operator_round: { selector: "reportRound" },
-  operator_mathop: { selector: "reportMonadic" },
-
-  // Data / variables
-  data_setvariableto: { selector: "doSetVar" },
-  data_changevariableby: { selector: "doChangeVar" },
-  data_showvariable: { selector: "doShowVar" },
-  data_hidevariable: { selector: "doHideVar" },
-  data_variable: { selector: "reportGetVar" },
-
-  // Lists
-  data_addtolist: { selector: "doAddToList" },
-  data_deleteoflist: { selector: "doDeleteFromList" },
-  data_insertatlist: { selector: "doInsertInList" },
-  data_replaceitemoflist: { selector: "doReplaceInList" },
-  data_itemoflist: { selector: "reportListItem" },
-  data_lengthoflist: { selector: "reportListLength" },
-  data_listcontainsitem: { selector: "reportListContainsItem" },
+  operator_add: { selector: "reportSum", slots: ["NUM1", "NUM2"] },
+  operator_subtract: { selector: "reportDifference", slots: ["NUM1", "NUM2"] },
+  operator_multiply: { selector: "reportProduct", slots: ["NUM1", "NUM2"] },
+  operator_divide: { selector: "reportQuotient", slots: ["NUM1", "NUM2"] },
+  operator_random: { selector: "reportRandom", slots: ["FROM", "TO"] },
+  operator_gt: { selector: "reportGreaterThan", slots: ["OPERAND1", "OPERAND2"] },
+  operator_lt: { selector: "reportLessThan", slots: ["OPERAND1", "OPERAND2"] },
+  operator_equals: { selector: "reportEquals", slots: ["OPERAND1", "OPERAND2"] },
+  operator_and: { selector: "reportAnd", slots: ["OPERAND1", "OPERAND2"] },
+  operator_or: { selector: "reportOr", slots: ["OPERAND1", "OPERAND2"] },
+  operator_not: { selector: "reportNot", slots: ["OPERAND"] },
+  operator_join: { selector: "reportJoinWords", slots: ["STRING1", "STRING2"] },
+  operator_letter_of: { selector: "reportLetter", slots: ["LETTER", "STRING"] },
+  operator_length: { selector: "reportStringSize", slots: ["STRING"] },
+  operator_mod: { selector: "reportModulus", slots: ["NUM1", "NUM2"] },
+  operator_round: { selector: "reportRound", slots: ["NUM"] },
+  operator_contains: { selector: "reportVariadicAny", slots: ["STRING1", "STRING2"] },
 };
-
-// sb2 maps the same kind of names, slightly different. We translate sb2 ops
-// to a synthetic sb3 opcode and reuse the table above.
-export const sb2OpToSb3: Record<string, string> = {
-  forward: "motion_movesteps",
-  "turnRight:": "motion_turnright",
-  "turnLeft:": "motion_turnleft",
-  "heading:": "motion_pointindirection",
-  "gotoX:y:": "motion_gotoxy",
-  "glideSecs:toX:y:elapsed:from:": "motion_glidesecstoxy",
-  "changeXposBy:": "motion_changexby",
-  "xpos:": "motion_setx",
-  "changeYposBy:": "motion_changeyby",
-  "ypos:": "motion_sety",
-  bounceOffEdge: "motion_ifonedgebounce",
-  xpos: "motion_xposition",
-  ypos: "motion_yposition",
-  heading: "motion_direction",
-
-  "say:duration:elapsed:from:": "looks_sayforsecs",
-  "say:": "looks_say",
-  "think:duration:elapsed:from:": "looks_thinkforsecs",
-  "think:": "looks_think",
-  show: "looks_show",
-  hide: "looks_hide",
-  "lookLike:": "looks_switchcostumeto",
-  nextCostume: "looks_nextcostume",
-  "changeSizeBy:": "looks_changesizeby",
-  "setSizeTo:": "looks_setsizeto",
-  scale: "looks_size",
-
-  "playSound:": "sound_play",
-  "doPlaySoundAndWait": "sound_playuntildone",
-  stopAllSounds: "sound_stopallsounds",
-
-  clearPenTrails: "pen_clear",
-  stampCostume: "pen_stamp",
-  putPenDown: "pen_penDown",
-  putPenUp: "pen_penUp",
-  "penColor:": "pen_setPenColorToColor",
-  "changePenSizeBy:": "pen_changePenSizeBy",
-  "penSize:": "pen_setPenSizeTo",
-
-  whenGreenFlag: "event_whenflagclicked",
-  whenKeyPressed: "event_whenkeypressed",
-  whenClicked: "event_whenthisspriteclicked",
-  whenIReceive: "event_whenbroadcastreceived",
-  "broadcast:": "event_broadcast",
-  doBroadcastAndWait: "event_broadcastandwait",
-
-  "wait:elapsed:from:": "control_wait",
-  doRepeat: "control_repeat",
-  doForever: "control_forever",
-  doIf: "control_if",
-  doIfElse: "control_if_else",
-  doWaitUntil: "control_wait_until",
-  doUntil: "control_repeat_until",
-  stopScripts: "control_stop",
-  createCloneOf: "control_create_clone_of",
-  deleteClone: "control_delete_this_clone",
-
-  "doAsk": "sensing_askandwait",
-  answer: "sensing_answer",
-  "keyPressed:": "sensing_keypressed",
-  mousePressed: "sensing_mousedown",
-  mouseX: "sensing_mousex",
-  mouseY: "sensing_mousey",
-  timer: "sensing_timer",
-  timerReset: "sensing_resettimer",
-
-  "+": "operator_add",
-  "-": "operator_subtract",
-  "*": "operator_multiply",
-  "/": "operator_divide",
-  "randomFrom:to:": "operator_random",
-  ">": "operator_gt",
-  "<": "operator_lt",
-  "=": "operator_equals",
-  "&": "operator_and",
-  "|": "operator_or",
-  "not": "operator_not",
-  "concatenate:with:": "operator_join",
-  "letter:of:": "operator_letter_of",
-  "stringLength:": "operator_length",
-  "%": "operator_mod",
-  "rounded": "operator_round",
-  "computeFunction:of:": "operator_mathop",
-
-  "setVar:to:": "data_setvariableto",
-  "changeVar:by:": "data_changevariableby",
-  "showVariable:": "data_showvariable",
-  "hideVariable:": "data_hidevariable",
-  readVariable: "data_variable",
-
-  "append:toList:": "data_addtolist",
-  "deleteLine:ofList:": "data_deleteoflist",
-  "insert:at:ofList:": "data_insertatlist",
-  "setLine:ofList:to:": "data_replaceitemoflist",
-  "getLine:ofList:": "data_itemoflist",
-  "lineCountOfList:": "data_lengthoflist",
-  "list:contains:": "data_listcontainsitem",
-};
-
-export function lookupSb3(opcode: string): SnapBlockSpec | undefined {
-  return sb3OpcodeMap[opcode];
-}

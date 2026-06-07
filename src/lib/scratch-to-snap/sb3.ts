@@ -178,7 +178,7 @@ function buildBlock(
   blocks: Record<string, Sb3Block>,
   warnings: string[],
 ): IRBlock {
-  const b = blocks[id] as Sb3Block;
+  const b: Sb3Block = blocks[id] as Sb3Block;
   if (!sb3OpcodeMap[b.opcode] && !KNOWN_C_OPCODES.has(b.opcode)) {
     if (!warnings.includes(b.opcode)) warnings.push(b.opcode);
   }

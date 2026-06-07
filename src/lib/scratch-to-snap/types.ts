@@ -1,18 +1,18 @@
-// Intermediate representation between Scratch parsers and the Snap XML writer.
-// Both sb2 and sb3 parsers produce this shape; the writer consumes it.
+// Intermediate representation between Scratch parser and Snap XML writer.
+// Inputs are kept as a name->value map so the writer can pull specific slots
+// like VALUE / VARIABLE / FRONT_BACK, which is required to emit correct Snap
+// blocks (Snap argument order rarely matches Scratch input order).
 
 export interface IRCostume {
   name: string;
-  // data URL (image/png, image/svg+xml, etc.)
   dataUrl: string;
-  // pixels from top-left in Scratch's coordinate system
   rotationCenterX?: number;
   rotationCenterY?: number;
 }
 
 export interface IRSound {
   name: string;
-  dataUrl: string; // audio/wav etc.
+  dataUrl: string;
 }
 
 export interface IRVariable {
@@ -25,17 +25,23 @@ export interface IRList {
   items: (string | number)[];
 }
 
-// A Scratch block is normalized to a uniform shape regardless of source format.
-export interface IRBlock {
-  // The sb3 opcode (sb2 ops are translated to sb3 opcodes before this stage).
-  opcode: string;
-  // Ordered argument values. Each can be a literal (string/number) or another IRBlock (reporter).
-  args: (IRArg)[];
-  // For C-shape blocks (if / forever / repeat) - one or two nested stacks.
-  branches?: IRBlock[][];
+export type IRArg = string | number | boolean | IRBlock | null;
+
+export interface IRMutation {
+  proccode: string;
+  argumentIds: string[];
+  argumentNames: string[];
+  argumentDefaults: string[];
+  warp?: boolean;
 }
 
-export type IRArg = string | number | boolean | IRBlock | null;
+export interface IRBlock {
+  opcode: string;
+  inputs: Record<string, IRArg>;
+  fields: Record<string, string>;
+  branches: Record<string, IRBlock[]>;
+  mutation?: IRMutation;
+}
 
 export interface IRScript {
   x: number;
@@ -62,6 +68,5 @@ export interface IRTarget {
 export interface IRProject {
   stage: IRTarget;
   sprites: IRTarget[];
-  // Optional notes from the parser surfaced to the UI.
   warnings: string[];
 }

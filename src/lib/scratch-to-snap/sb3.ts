@@ -1,13 +1,14 @@
 // Parser for Scratch 3 (.sb3) projects.
-// .sb3 is a zip with project.json + asset files keyed by md5+extension.
+// Normalizes the flat blocks dictionary into a per-script tree with named
+// inputs, named fields, and mutation data for custom blocks.
 
 import JSZip from "jszip";
-import { sb3OpcodeMap } from "./blocks";
 import type {
   IRArg,
   IRBlock,
   IRCostume,
   IRList,
+  IRMutation,
   IRProject,
   IRScript,
   IRSound,
@@ -15,6 +16,13 @@ import type {
   IRVariable,
 } from "./types";
 
+interface Sb3Mutation {
+  proccode?: string;
+  argumentids?: string;
+  argumentnames?: string;
+  argumentdefaults?: string;
+  warp?: string | boolean;
+}
 interface Sb3Block {
   opcode: string;
   next: string | null;
@@ -25,6 +33,7 @@ interface Sb3Block {
   x?: number;
   y?: number;
   shadow?: boolean;
+  mutation?: Sb3Mutation;
 }
 
 interface Sb3Target {
@@ -40,11 +49,7 @@ interface Sb3Target {
     rotationCenterY?: number;
     dataFormat: string;
   }>;
-  sounds: Array<{
-    name: string;
-    md5ext: string;
-    dataFormat: string;
-  }>;
+  sounds: Array<{ name: string; md5ext: string; dataFormat: string }>;
   currentCostume: number;
   x?: number;
   y?: number;
@@ -70,7 +75,6 @@ async function fileToDataUrl(zip: JSZip, name: string): Promise<string> {
   const ext = (name.split(".").pop() || "").toLowerCase();
   const mime = MIME_BY_EXT[ext] || "application/octet-stream";
   const buf = await file.async("uint8array");
-  // Base64 encode
   let binary = "";
   const chunk = 0x8000;
   for (let i = 0; i < buf.length; i += chunk) {
@@ -83,9 +87,11 @@ export async function parseSb3(arrayBuffer: ArrayBuffer): Promise<IRProject> {
   const zip = await JSZip.loadAsync(arrayBuffer);
   const projectFile = zip.file("project.json");
   if (!projectFile) throw new Error("Missing project.json in .sb3");
-  const json = JSON.parse(await projectFile.async("string")) as { targets: Sb3Target[] };
+  const json = JSON.parse(await projectFile.async("string")) as {
+    targets: Sb3Target[];
+  };
 
-  const warnings: string[] = [];
+  const warnings = new Set<string>();
   const targets: IRTarget[] = [];
 
   for (const t of json.targets) {
@@ -102,17 +108,16 @@ export async function parseSb3(arrayBuffer: ArrayBuffer): Promise<IRProject> {
     for (const s of t.sounds) {
       sounds.push({ name: s.name, dataUrl: await fileToDataUrl(zip, s.md5ext) });
     }
-
-    const variables: IRVariable[] = Object.values(t.variables || {}).map(([name, value]) => ({
-      name,
-      value,
-    }));
+    const variables: IRVariable[] = Object.values(t.variables || {}).map(
+      ([name, value]) => ({ name, value }),
+    );
     const lists: IRList[] = Object.values(t.lists || {}).map(([name, items]) => ({
       name,
       items,
     }));
 
-    const scripts = parseScripts(t.blocks as Record<string, Sb3Block>, warnings);
+    const blocks = t.blocks as Record<string, Sb3Block>;
+    const scripts = parseScripts(blocks, warnings);
 
     targets.push({
       name: t.name,
@@ -133,32 +138,28 @@ export async function parseSb3(arrayBuffer: ArrayBuffer): Promise<IRProject> {
 
   const stage = targets.find((t) => t.isStage)!;
   const sprites = targets.filter((t) => !t.isStage);
-  return { stage, sprites, warnings };
+  return { stage, sprites, warnings: [...warnings] };
 }
 
 function parseScripts(
   blocks: Record<string, Sb3Block>,
-  warnings: string[],
+  warnings: Set<string>,
 ): IRScript[] {
   const scripts: IRScript[] = [];
-
   for (const [id, b] of Object.entries(blocks)) {
     if (!b || Array.isArray(b)) continue;
     if (!b.topLevel) continue;
-    // Skip top-level shadow / floating reporters for the MVP.
     if (b.shadow) continue;
-
     const stack = buildStack(id, blocks, warnings);
     scripts.push({ x: b.x ?? 0, y: b.y ?? 0, blocks: stack });
   }
-
   return scripts;
 }
 
 function buildStack(
   startId: string,
   blocks: Record<string, Sb3Block>,
-  warnings: string[],
+  warnings: Set<string>,
 ): IRBlock[] {
   const out: IRBlock[] = [];
   let cur: string | null = startId;
@@ -176,71 +177,87 @@ function buildStack(
 function buildBlock(
   id: string,
   blocks: Record<string, Sb3Block>,
-  warnings: string[],
+  warnings: Set<string>,
 ): IRBlock {
-  const b: Sb3Block = blocks[id] as Sb3Block;
-  if (!sb3OpcodeMap[b.opcode] && !KNOWN_C_OPCODES.has(b.opcode)) {
-    if (!warnings.includes(b.opcode)) warnings.push(b.opcode);
-  }
+  const b = blocks[id] as Sb3Block;
+  warnings.add(b.opcode);
 
-  const args: IRArg[] = [];
-  const branches: IRBlock[][] = [];
-
-  // sb3 inputs: { NAME: [shadowType, valueOrBlockId, ...] }
-  // Substack inputs (SUBSTACK / SUBSTACK2) point to first block in nested stack.
-  // Regular value inputs can be either a literal array or a block id string.
+  const inputs: Record<string, IRArg> = {};
+  const branches: Record<string, IRBlock[]> = {};
   for (const [name, raw] of Object.entries(b.inputs || {})) {
     if (name === "SUBSTACK" || name === "SUBSTACK2") {
       const blockId = extractBlockId(raw);
-      if (blockId) branches.push(buildStack(blockId, blocks, warnings));
-      else branches.push([]);
+      branches[name] = blockId ? buildStack(blockId, blocks, warnings) : [];
       continue;
     }
-    const value = extractInputValue(raw, blocks, warnings);
-    args.push(value);
+    inputs[name] = extractInputValue(raw, blocks, warnings);
   }
 
-  // Fields are direct values like variable names, key choices, etc.
-  for (const [, raw] of Object.entries(b.fields || {})) {
+  const fields: Record<string, string> = {};
+  for (const [name, raw] of Object.entries(b.fields || {})) {
     if (Array.isArray(raw) && raw.length > 0) {
-      args.push(raw[0] as string);
+      fields[name] = String(raw[0] ?? "");
     }
   }
 
-  return { opcode: b.opcode, args, branches: branches.length ? branches : undefined };
+  let mutation: IRMutation | undefined;
+  if (b.mutation) {
+    const m = b.mutation;
+    mutation = {
+      proccode: m.proccode ?? "",
+      argumentIds: safeJsonArray(m.argumentids),
+      argumentNames: safeJsonArray(m.argumentnames),
+      argumentDefaults: safeJsonArray(m.argumentdefaults),
+      warp: m.warp === true || m.warp === "true",
+    };
+  }
+
+  return { opcode: b.opcode, inputs, fields, branches, mutation };
 }
 
-const KNOWN_C_OPCODES = new Set([
-  "control_if",
-  "control_if_else",
-  "control_forever",
-  "control_repeat",
-  "control_repeat_until",
-]);
+function safeJsonArray(s: string | undefined): string[] {
+  if (!s) return [];
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? v.map((x) => String(x)) : [];
+  } catch {
+    return [];
+  }
+}
 
 function extractBlockId(raw: unknown): string | null {
-  // [1, "blockId"] | [2, "blockId"] | [3, "blockId", [shadow]] | [1, [shadow]]
   if (!Array.isArray(raw)) return null;
   const inner = raw[1];
-  if (typeof inner === "string") return inner;
-  return null;
+  return typeof inner === "string" ? inner : null;
 }
 
 function extractInputValue(
   raw: unknown,
   blocks: Record<string, Sb3Block>,
-  warnings: string[],
+  warnings: Set<string>,
 ): IRArg {
   if (!Array.isArray(raw)) return "";
   const inner = raw[1];
-  // Reporter block plugged in
   if (typeof inner === "string" && blocks[inner]) {
+    const child = blocks[inner] as Sb3Block;
+    // Menus (looks_costume, sound_sounds_menu, etc.) are shadow reporters
+    // whose only meaningful payload is a single field value. Inline that
+    // value instead of producing a reporter block.
+    if (child.shadow && isMenuOpcode(child.opcode)) {
+      const fieldVals = Object.values(child.fields || {});
+      if (fieldVals.length && Array.isArray(fieldVals[0])) {
+        return String((fieldVals[0] as unknown[])[0] ?? "");
+      }
+    }
     return buildBlock(inner, blocks, warnings);
   }
-  // Literal shadow: [4, "10"] or [10, "hello"] inside inner array
   if (Array.isArray(inner)) {
-    // inner is like [4, "10"] or [10, "hello"] or [11, "name", "id"] for broadcasts
+    // Literal shadow: [type, value, ...]
     return (inner[1] as string) ?? "";
   }
   return "";
+}
+
+function isMenuOpcode(op: string): boolean {
+  return op.endsWith("_menu") || op === "looks_costume" || op === "looks_backdrops" || op === "sound_sounds_menu";
 }

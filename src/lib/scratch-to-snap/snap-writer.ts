@@ -161,9 +161,10 @@ function buildVariables(target: IRTarget): XmlNode {
   }
   for (const list of target.lists) {
     const listNode = el("variable", { name: list.name });
-    const listVal = el("list", { struct: "atomic" });
-    for (const item of list.items) listVal.add(el("item", {}, String(item)));
+    const listVal = el("list", {});
+    for (const item of list.items) listVal.add(el("item", {}, el("l", {}, String(item))));
     listNode.add(listVal);
+    node.add(listNode);
   }
   return node;
 }

@@ -492,6 +492,7 @@ function buildBlock(block: IRBlock, ctx: RenderCtx): XmlNode {
   }
 
   // Unknown opcode: emit a labeled placeholder reporter so the project still loads.
+  ctx.unknownOpcodes.add(block.opcode);
   return el(
     "block",
     { s: "reportJoinWords" },

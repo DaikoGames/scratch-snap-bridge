@@ -96,11 +96,25 @@ export async function parseSb3(arrayBuffer: ArrayBuffer): Promise<IRProject> {
   for (const t of json.targets) {
     const costumes: IRCostume[] = [];
     for (const c of t.costumes) {
+      const dataUrl = await fileToDataUrl(zip, c.md5ext);
+      const ext = (c.md5ext.split(".").pop() || "").toLowerCase();
+      let rcx = c.rotationCenterX ?? 0;
+      let rcy = c.rotationCenterY ?? 0;
+      // Scratch SVG costumes use viewBox-relative rotation centers. Snap reads
+      // SVGs and computes its own image bounds, so offset by the SVG's viewBox
+      // origin if present to keep the rotation point on the correct pixel.
+      if (ext === "svg") {
+        const offset = await readSvgViewBoxOffset(zip, c.md5ext);
+        if (offset) {
+          rcx -= offset.x;
+          rcy -= offset.y;
+        }
+      }
       costumes.push({
         name: c.name,
-        dataUrl: await fileToDataUrl(zip, c.md5ext),
-        rotationCenterX: c.rotationCenterX,
-        rotationCenterY: c.rotationCenterY,
+        dataUrl,
+        rotationCenterX: rcx,
+        rotationCenterY: rcy,
       });
     }
     const sounds: IRSound[] = [];

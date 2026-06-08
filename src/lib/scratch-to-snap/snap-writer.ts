@@ -27,10 +27,15 @@ interface RenderCtx {
   // argument_reporter_string_number lookups consult this to know whether to
   // emit <block var="..."/> (proc arg) vs reportGetVar.
   procArgScope: Set<string>;
+  unknownOpcodes: Set<string>;
 }
 
-function newCtx(): RenderCtx {
-  return { procDefs: [], procArgScope: new Set() };
+function newCtx(unknownOpcodes?: Set<string>): RenderCtx {
+  return {
+    procDefs: [],
+    procArgScope: new Set(),
+    unknownOpcodes: unknownOpcodes ?? new Set(),
+  };
 }
 
 export function projectToSnapXml(project: IRProject, _projectName: string): string {

@@ -39,12 +39,16 @@ function newCtx(unknownOpcodes?: Set<string>): RenderCtx {
 }
 
 export function projectToSnapXml(project: IRProject, _projectName: string): string {
+  const unknownOpcodes = new Set<string>();
+  const stageNode = buildStage(project, unknownOpcodes);
+  // Surface accumulated unknowns back to caller via project.warnings.
+  for (const op of unknownOpcodes) project.warnings.push(op);
   const root = el(
     "project",
     { name: "Project", app: "Snapinator", version: "1" },
     el("notes", {}, buildNotes(project)),
     el("thumbnail", {}),
-    buildStage(project),
+    stageNode,
   );
   return root.toString();
 }
@@ -53,13 +57,13 @@ export function projectToSnapXml(project: IRProject, _projectName: string): stri
 function buildNotes(project: IRProject): string {
   const lines = ["Converted from Scratch to Snap! by the Lovable converter."];
   if (project.warnings.length) {
-    lines.push("Scratch opcodes encountered: " + project.warnings.join(", "));
+    lines.push("Unconverted opcodes: " + project.warnings.join(", "));
   }
   return lines.join("\n");
 }
 
-function buildStage(project: IRProject): XmlNode {
-  const ctx = newCtx();
+function buildStage(project: IRProject, unknownOpcodes: Set<string>): XmlNode {
+  const ctx = newCtx(unknownOpcodes);
   const stage = project.stage;
   const stageNode = el("stage", {
     name: "Background",
@@ -89,7 +93,7 @@ function buildStage(project: IRProject): XmlNode {
 
   const sprites = el("sprites", {});
   for (const [i, sprite] of project.sprites.entries()) {
-    sprites.add(buildSprite(sprite, i + 2));
+    sprites.add(buildSprite(sprite, i + 2, unknownOpcodes));
   }
   stageNode.add(sprites);
   return stageNode;

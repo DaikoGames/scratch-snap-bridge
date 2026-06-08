@@ -41,7 +41,7 @@ export function projectToSnapXml(project: IRProject, _projectName: string): stri
     el("thumbnail", {}),
     buildStage(project),
   );
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${root.toString()}`;
+  return root.toString();
 }
 
 
@@ -97,7 +97,7 @@ function buildSprite(sprite: IRTarget, id: number): XmlNode {
     idx: id,
     x: sprite.x,
     y: sprite.y,
-    heading: sprite.direction - 90,
+    heading: sprite.direction,
     scale: sprite.size / 100,
     rotation: 1,
     draggable: true,

@@ -57,7 +57,7 @@ function buildStage(project: IRProject): XmlNode {
   const ctx = newCtx();
   const stage = project.stage;
   const stageNode = el("stage", {
-    name: "Stage",
+    name: "Background",
     width: 480,
     height: 360,
     costume: stage.currentCostume + 1,

@@ -99,8 +99,8 @@ function buildStage(project: IRProject, unknownOpcodes: Set<string>): XmlNode {
   return stageNode;
 }
 
-function buildSprite(sprite: IRTarget, id: number): XmlNode {
-  const ctx = newCtx();
+function buildSprite(sprite: IRTarget, id: number, unknownOpcodes: Set<string>): XmlNode {
+  const ctx = newCtx(unknownOpcodes);
   const node = el("sprite", {
     name: sprite.name,
     idx: id,

@@ -27,19 +27,28 @@ interface RenderCtx {
   // argument_reporter_string_number lookups consult this to know whether to
   // emit <block var="..."/> (proc arg) vs reportGetVar.
   procArgScope: Set<string>;
+  unknownOpcodes: Set<string>;
 }
 
-function newCtx(): RenderCtx {
-  return { procDefs: [], procArgScope: new Set() };
+function newCtx(unknownOpcodes?: Set<string>): RenderCtx {
+  return {
+    procDefs: [],
+    procArgScope: new Set(),
+    unknownOpcodes: unknownOpcodes ?? new Set(),
+  };
 }
 
 export function projectToSnapXml(project: IRProject, _projectName: string): string {
+  const unknownOpcodes = new Set<string>();
+  const stageNode = buildStage(project, unknownOpcodes);
+  // Surface accumulated unknowns back to caller via project.warnings.
+  for (const op of unknownOpcodes) project.warnings.push(op);
   const root = el(
     "project",
     { name: "Project", app: "Snapinator", version: "1" },
     el("notes", {}, buildNotes(project)),
     el("thumbnail", {}),
-    buildStage(project),
+    stageNode,
   );
   return root.toString();
 }
@@ -48,13 +57,13 @@ export function projectToSnapXml(project: IRProject, _projectName: string): stri
 function buildNotes(project: IRProject): string {
   const lines = ["Converted from Scratch to Snap! by the Lovable converter."];
   if (project.warnings.length) {
-    lines.push("Scratch opcodes encountered: " + project.warnings.join(", "));
+    lines.push("Unconverted opcodes: " + project.warnings.join(", "));
   }
   return lines.join("\n");
 }
 
-function buildStage(project: IRProject): XmlNode {
-  const ctx = newCtx();
+function buildStage(project: IRProject, unknownOpcodes: Set<string>): XmlNode {
+  const ctx = newCtx(unknownOpcodes);
   const stage = project.stage;
   const stageNode = el("stage", {
     name: "Background",
@@ -84,14 +93,14 @@ function buildStage(project: IRProject): XmlNode {
 
   const sprites = el("sprites", {});
   for (const [i, sprite] of project.sprites.entries()) {
-    sprites.add(buildSprite(sprite, i + 2));
+    sprites.add(buildSprite(sprite, i + 2, unknownOpcodes));
   }
   stageNode.add(sprites);
   return stageNode;
 }
 
-function buildSprite(sprite: IRTarget, id: number): XmlNode {
-  const ctx = newCtx();
+function buildSprite(sprite: IRTarget, id: number, unknownOpcodes: Set<string>): XmlNode {
+  const ctx = newCtx(unknownOpcodes);
   const node = el("sprite", {
     name: sprite.name,
     idx: id,
@@ -397,6 +406,32 @@ const handlers: Record<string, Handler> = {
       el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
       argOrLiteral(b.inputs.ITEM, ctx, ""),
     ),
+  data_itemnumoflist: (b, ctx) =>
+    el(
+      "block",
+      { s: "reportListIndex" },
+      argOrLiteral(b.inputs.ITEM, ctx, ""),
+      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+    ),
+  data_deletealloflist: (b) =>
+    el(
+      "block",
+      { s: "doDeleteFromList" },
+      el("l", {}, "all"),
+      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+    ),
+  data_showlist: (b) => el("block", { s: "doShowVar" }, el("l", {}, b.fields.LIST ?? "")),
+  data_hidelist: (b) => el("block", { s: "doHideVar" }, el("l", {}, b.fields.LIST ?? "")),
+
+  // ---- Motion (extras) ---------------------------------------------------
+  motion_glideto: (b, ctx) =>
+    el(
+      "block",
+      { s: "doGlide" },
+      argOrLiteral(b.inputs.SECS, ctx, "1"),
+      el("block", { s: "reportAttributeOf" }, el("l", {}, "x position"), argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
+      el("block", { s: "reportAttributeOf" }, el("l", {}, "y position"), argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
+    ),
 
   // ---- Operators ---------------------------------------------------------
   operator_mathop: (b, ctx) =>
@@ -457,6 +492,7 @@ function buildBlock(block: IRBlock, ctx: RenderCtx): XmlNode {
   }
 
   // Unknown opcode: emit a labeled placeholder reporter so the project still loads.
+  ctx.unknownOpcodes.add(block.opcode);
   return el(
     "block",
     { s: "reportJoinWords" },

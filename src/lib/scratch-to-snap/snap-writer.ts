@@ -97,7 +97,7 @@ function buildSprite(sprite: IRTarget, id: number): XmlNode {
     idx: id,
     x: sprite.x,
     y: sprite.y,
-    heading: sprite.direction - 90,
+    heading: sprite.direction,
     scale: sprite.size / 100,
     rotation: 1,
     draggable: true,

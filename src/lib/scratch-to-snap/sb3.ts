@@ -83,6 +83,21 @@ async function fileToDataUrl(zip: JSZip, name: string): Promise<string> {
   return `data:${mime};base64,${btoa(binary)}`;
 }
 
+async function readSvgViewBoxOffset(
+  zip: JSZip,
+  name: string,
+): Promise<{ x: number; y: number } | null> {
+  const file = zip.file(name);
+  if (!file) return null;
+  const text = await file.async("string");
+  const m = text.match(/viewBox\s*=\s*["']\s*([-\d.eE]+)\s+([-\d.eE]+)\s+([-\d.eE]+)\s+([-\d.eE]+)/);
+  if (!m) return null;
+  const x = parseFloat(m[1]);
+  const y = parseFloat(m[2]);
+  if (!isFinite(x) || !isFinite(y)) return null;
+  return { x, y };
+}
+
 export async function parseSb3(arrayBuffer: ArrayBuffer): Promise<IRProject> {
   const zip = await JSZip.loadAsync(arrayBuffer);
   const projectFile = zip.file("project.json");

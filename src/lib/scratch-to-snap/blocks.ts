@@ -36,6 +36,7 @@ export const simpleMap: Record<string, SimpleSpec> = {
   looks_switchcostumeto: { selector: "doSwitchToCostume", slots: ["COSTUME"] },
   looks_nextcostume: { selector: "doWearNextCostume" },
   looks_switchbackdropto: { selector: "doSwitchToCostume", slots: ["BACKDROP"] },
+  looks_switchbackdroptoandwait: { selector: "doSwitchToCostume", slots: ["BACKDROP"] },
   looks_nextbackdrop: { selector: "doWearNextCostume" },
   looks_changesizeby: { selector: "changeScale", slots: ["CHANGE"] },
   looks_setsizeto: { selector: "setScale", slots: ["SIZE"] },
@@ -50,6 +51,10 @@ export const simpleMap: Record<string, SimpleSpec> = {
   sound_changevolumeby: { selector: "changeVolume", slots: ["VOLUME"] },
   sound_setvolumeto: { selector: "setVolume", slots: ["VOLUME"] },
   sound_volume: { selector: "getVolume" },
+  // Sound effects (Snap! has no direct sound-effect blocks; map to comments)
+  sound_changeeffectby: { selector: "doChangeTempo", slots: ["VALUE"] },
+  sound_seteffectto: { selector: "doSetTempo", slots: ["VALUE"] },
+  sound_cleareffects: { selector: "doStopAllSounds" },
 
   // Pen
   pen_clear: { selector: "clear" },
@@ -66,6 +71,7 @@ export const simpleMap: Record<string, SimpleSpec> = {
   event_whenthisspriteclicked: { selector: "receiveInteraction", slots: [] },
   event_whenstageclicked: { selector: "receiveInteraction", slots: [] },
   event_whenbroadcastreceived: { selector: "receiveMessage", slots: ["BROADCAST_OPTION"] },
+  event_whenbackdropswitchesto: { selector: "receiveMessage", slots: ["BACKDROP"] },
   event_broadcast: { selector: "doBroadcast", slots: ["BROADCAST_INPUT"] },
   event_broadcastandwait: { selector: "doBroadcastAndWait", slots: ["BROADCAST_INPUT"] },
 
@@ -88,6 +94,7 @@ export const simpleMap: Record<string, SimpleSpec> = {
   sensing_touchingcolor: { selector: "reportTouchingColor", slots: ["COLOR"] },
   sensing_coloristouchingcolor: { selector: "reportColorIsTouchingColor", slots: ["COLOR", "COLOR2"] },
   sensing_distanceto: { selector: "reportDistanceTo", slots: ["DISTANCETOMENU"] },
+  sensing_setdragmode: { selector: "setDraggableTo", slots: ["DRAG_MODE"] },
 
   // Operators
   operator_add: { selector: "reportSum", slots: ["NUM1", "NUM2"] },
@@ -106,5 +113,10 @@ export const simpleMap: Record<string, SimpleSpec> = {
   operator_length: { selector: "reportStringSize", slots: ["STRING"] },
   operator_mod: { selector: "reportModulus", slots: ["NUM1", "NUM2"] },
   operator_round: { selector: "reportRound", slots: ["NUM"] },
-  operator_contains: { selector: "reportVariadicAny", slots: ["STRING1", "STRING2"] },
+  operator_contains: { selector: "reportTextContains", slots: ["STRING1", "STRING2"] },
+
+  // Lists (extras handled in writer for ones that need item-of-list reordering)
+  data_deletealloflist: { selector: "doDeleteFromList", slots: [] },
+  data_showlist: { selector: "doShowVar", slots: ["LIST"] },
+  data_hidelist: { selector: "doHideVar", slots: ["LIST"] },
 };

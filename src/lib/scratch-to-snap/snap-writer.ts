@@ -405,6 +405,31 @@ const handlers: Record<string, Handler> = {
       { s: "reportListContainsItem" },
       el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
       argOrLiteral(b.inputs.ITEM, ctx, ""),
+  data_itemnumoflist: (b, ctx) =>
+    el(
+      "block",
+      { s: "reportListIndex" },
+      argOrLiteral(b.inputs.ITEM, ctx, ""),
+      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+    ),
+  data_deletealloflist: (b) =>
+    el(
+      "block",
+      { s: "doDeleteFromList" },
+      el("l", {}, "all"),
+      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+    ),
+  data_showlist: (b) => el("block", { s: "doShowVar" }, el("l", {}, b.fields.LIST ?? "")),
+  data_hidelist: (b) => el("block", { s: "doHideVar" }, el("l", {}, b.fields.LIST ?? "")),
+
+  // ---- Motion (extras) ---------------------------------------------------
+  motion_glideto: (b, ctx) =>
+    el(
+      "block",
+      { s: "doGlide" },
+      argOrLiteral(b.inputs.SECS, ctx, "1"),
+      el("block", { s: "reportAttributeOf" }, el("l", {}, "x position"), argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
+      el("block", { s: "reportAttributeOf" }, el("l", {}, "y position"), argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
     ),
 
   // ---- Operators ---------------------------------------------------------

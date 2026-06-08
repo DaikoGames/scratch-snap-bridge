@@ -405,6 +405,7 @@ const handlers: Record<string, Handler> = {
       { s: "reportListContainsItem" },
       el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
       argOrLiteral(b.inputs.ITEM, ctx, ""),
+    ),
   data_itemnumoflist: (b, ctx) =>
     el(
       "block",

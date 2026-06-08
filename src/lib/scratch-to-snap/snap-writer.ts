@@ -130,26 +130,30 @@ function buildSprite(sprite: IRTarget, id: number): XmlNode {
 }
 
 function buildCostumes(target: IRTarget): XmlNode {
-  const list = el("list", { struct: "atomic", id: "" });
+  const list = el("list", {});
   const costumes = el("costumes", {}, list);
   for (const c of target.costumes) {
     list.add(
-      el("costume", {
-        name: c.name,
-        "center-x": c.rotationCenterX ?? 0,
-        "center-y": c.rotationCenterY ?? 0,
-        image: c.dataUrl,
-      }),
+      el(
+        "item",
+        {},
+        el("costume", {
+          name: c.name,
+          "center-x": c.rotationCenterX ?? 0,
+          "center-y": c.rotationCenterY ?? 0,
+          image: c.dataUrl,
+        }),
+      ),
     );
   }
   return costumes;
 }
 
 function buildSounds(target: IRTarget): XmlNode {
-  const list = el("list", { struct: "atomic", id: "" });
+  const list = el("list", {});
   const sounds = el("sounds", {}, list);
   for (const s of target.sounds) {
-    list.add(el("sound", { name: s.name, sound: s.dataUrl }));
+    list.add(el("item", {}, el("sound", { name: s.name, sound: s.dataUrl })));
   }
   return sounds;
 }

@@ -33,31 +33,17 @@ function newCtx(): RenderCtx {
   return { procDefs: [], procArgScope: new Set() };
 }
 
-export function projectToSnapXml(project: IRProject, projectName: string): string {
+export function projectToSnapXml(project: IRProject, _projectName: string): string {
   const root = el(
     "project",
-    { name: projectName, app: SNAP_APP, version: SNAP_VERSION },
+    { name: "Project", app: "Snapinator", version: "1" },
     el("notes", {}, buildNotes(project)),
     el("thumbnail", {}),
-    el("scenes", { select: 1 }, buildScene(project, projectName)),
+    buildStage(project),
   );
   return `<?xml version="1.0" encoding="UTF-8"?>\n${root.toString()}`;
 }
 
-function buildScene(project: IRProject, projectName: string): XmlNode {
-  return el(
-    "scene",
-    { name: projectName, version: SNAP_VERSION },
-    el("notes", {}, buildNotes(project)),
-    el("hidden", {}),
-    el("headers", {}),
-    el("code", {}),
-    el("blocks", {}),
-    el("primitives", {}),
-    buildStage(project),
-    el("variables", {}),
-  );
-}
 
 function buildNotes(project: IRProject): string {
   const lines = ["Converted from Scratch to Snap! by the Lovable converter."];
@@ -71,7 +57,7 @@ function buildStage(project: IRProject): XmlNode {
   const ctx = newCtx();
   const stage = project.stage;
   const stageNode = el("stage", {
-    name: "Stage",
+    name: "Background",
     width: 480,
     height: 360,
     costume: stage.currentCostume + 1,

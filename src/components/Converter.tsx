@@ -13,11 +13,30 @@ export function Converter() {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const triggerDownload = (xml: string, filename: string) => {
+    const blob = new Blob([xml], { type: "text/xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const handleFile = useCallback(async (file: File) => {
     setStatus({ kind: "working", filename: file.name });
     try {
       const result = await convertScratchFile(file);
-      setStatus({ kind: "done", result, sizeKb: Math.round(result.xml.length / 1024) });
+      const downloadResult: ConvertResult = { ...result, filename: "Project.xml" };
+      triggerDownload(downloadResult.xml, downloadResult.filename);
+      setStatus({
+        kind: "done",
+        result: downloadResult,
+        sizeKb: Math.round(downloadResult.xml.length / 1024),
+      });
     } catch (err) {
       setStatus({
         kind: "error",
@@ -38,15 +57,7 @@ export function Converter() {
 
   const onDownload = () => {
     if (status.kind !== "done") return;
-    const blob = new Blob([status.result.xml], { type: "application/xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = status.result.filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    triggerDownload(status.result.xml, status.result.filename);
   };
 
   return (

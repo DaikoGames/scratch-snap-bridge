@@ -108,8 +108,8 @@ function buildSprite(sprite: IRTarget, id: number, unknownOpcodes: Set<string>):
     y: sprite.y,
     heading: sprite.direction,
     scale: sprite.size / 100,
-    rotation: 1,
-    draggable: true,
+    rotation: rotationStyleToNumber(sprite.rotationStyle),
+    draggable: sprite.draggable === true,
     costume: sprite.currentCostume + 1,
     color: "80,80,80,1",
     pen: "tip",
@@ -122,6 +122,18 @@ function buildSprite(sprite: IRTarget, id: number, unknownOpcodes: Set<string>):
   node.add(buildScripts(sprite, ctx));
   node.add(buildBlocksSection(ctx));
   return node;
+}
+
+function rotationStyleToNumber(style: string | undefined): number {
+  switch (style) {
+    case "left-right":
+      return 2;
+    case "don't rotate":
+      return 0;
+    case "all around":
+    default:
+      return 1;
+  }
 }
 
 function buildCostumes(target: IRTarget): XmlNode {

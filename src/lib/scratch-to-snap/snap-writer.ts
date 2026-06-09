@@ -200,13 +200,17 @@ const handlers: Record<string, Handler> = {
     el("block", { s: "doGotoObject" }, argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
   motion_pointtowards: (b, ctx) =>
     el("block", { s: "doFaceTowards" }, argOrLiteral(b.inputs.TOWARDS, ctx, "_mouse_")),
-  motion_setrotationstyle: (b) =>
-    el(
+  motion_setrotationstyle: (b) => {
+    // Snap! has no first-class rotation-style block; the sprite's rotation
+    // attribute is set declaratively on the <sprite rotation="..."> tag.
+    // Emit a harmless bubble so the project still loads and the user can see
+    // which style was requested.
+    return el(
       "block",
-      { s: "doSetVar" },
-      el("l", {}, "rotation style"),
-      el("l", {}, mapRotationStyle(b.fields.STYLE)),
-    ),
+      { s: "bubble" },
+      el("l", {}, `set rotation style: ${mapRotationStyle(b.fields.STYLE)}`),
+    );
+  },
 
   // ---- Looks -------------------------------------------------------------
   looks_changeeffectby: (b, ctx) =>

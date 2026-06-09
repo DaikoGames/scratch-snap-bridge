@@ -274,5 +274,25 @@ function extractInputValue(
 }
 
 function isMenuOpcode(op: string): boolean {
-  return op.endsWith("_menu") || op === "looks_costume" || op === "looks_backdrops" || op === "sound_sounds_menu";
+  if (op.endsWith("_menu")) return true;
+  // Scratch menu shadows that don't follow the `_menu` suffix convention.
+  return (
+    op === "looks_costume" ||
+    op === "looks_backdrops" ||
+    op === "sound_sounds_menu" ||
+    op === "sensing_touchingobjectmenu" ||
+    op === "sensing_distancetomenu" ||
+    op === "sensing_keyoptions" ||
+    op === "sensing_of_object_menu" ||
+    op === "motion_goto_menu" ||
+    op === "motion_glideto_menu" ||
+    op === "motion_pointtowards_menu" ||
+    op === "control_create_clone_of_menu" ||
+    op === "pen_menu_colorParam" ||
+    op === "music_menu_DRUM" ||
+    op === "music_menu_INSTRUMENT" ||
+    op === "videoSensing_menu_ATTRIBUTE" ||
+    op === "videoSensing_menu_SUBJECT" ||
+    op === "videoSensing_menu_VIDEO_STATE"
+  );
 }

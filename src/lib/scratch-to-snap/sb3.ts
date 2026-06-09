@@ -56,6 +56,8 @@ interface Sb3Target {
   direction?: number;
   size?: number;
   visible?: boolean;
+  draggable?: boolean;
+  rotationStyle?: string;
 }
 
 const MIME_BY_EXT: Record<string, string> = {

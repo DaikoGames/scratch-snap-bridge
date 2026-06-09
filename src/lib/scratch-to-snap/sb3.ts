@@ -157,6 +157,8 @@ export async function parseSb3(arrayBuffer: ArrayBuffer): Promise<IRProject> {
       direction: t.direction ?? 90,
       size: t.size ?? 100,
       visible: t.visible ?? true,
+      draggable: t.draggable ?? false,
+      rotationStyle: t.rotationStyle ?? "all around",
       costumes,
       currentCostume: t.currentCostume ?? 0,
       sounds,

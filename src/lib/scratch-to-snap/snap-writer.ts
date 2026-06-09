@@ -353,6 +353,12 @@ const handlers: Record<string, Handler> = {
   },
   sensing_username: () => el("block", { s: "reportUsername" }),
   sensing_loudness: () => el("block", { s: "reportAudio" }, el("l", {}, "volume")),
+  sensing_setdragmode: (b) =>
+    el(
+      "block",
+      { s: "bubble" },
+      el("l", {}, `set drag mode: ${b.fields.DRAG_MODE ?? "draggable"} (configure via right-click in Snap!)`),
+    ),
 
   // ---- Variables (slot order is reversed from sb3) -----------------------
   data_setvariableto: (b, ctx) =>

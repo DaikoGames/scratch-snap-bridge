@@ -57,6 +57,8 @@ export interface IRTarget {
   direction: number;
   size: number;
   visible: boolean;
+  draggable?: boolean;
+  rotationStyle?: string;
   costumes: IRCostume[];
   currentCostume: number;
   sounds: IRSound[];

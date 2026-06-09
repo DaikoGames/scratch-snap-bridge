@@ -201,7 +201,12 @@ const handlers: Record<string, Handler> = {
   motion_pointtowards: (b, ctx) =>
     el("block", { s: "doFaceTowards" }, argOrLiteral(b.inputs.TOWARDS, ctx, "_mouse_")),
   motion_setrotationstyle: (b) =>
-    el("block", { s: "setRotationStyle" }, el("l", {}, mapRotationStyle(b.fields.STYLE))),
+    el(
+      "block",
+      { s: "doSetVar" },
+      el("l", {}, "rotation style"),
+      el("l", {}, mapRotationStyle(b.fields.STYLE)),
+    ),
 
   // ---- Looks -------------------------------------------------------------
   looks_changeeffectby: (b, ctx) =>

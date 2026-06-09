@@ -351,7 +351,7 @@ const handlers: Record<string, Handler> = {
       ),
     );
   },
-  sensing_username: () => el("block", { s: "reportUserName" }),
+  sensing_username: () => el("block", { s: "reportUsername" }),
   sensing_loudness: () => el("block", { s: "reportAudio" }, el("l", {}, "volume")),
 
   // ---- Variables (slot order is reversed from sb3) -----------------------

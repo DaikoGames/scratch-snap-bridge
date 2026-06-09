@@ -94,7 +94,7 @@ export const simpleMap: Record<string, SimpleSpec> = {
   sensing_touchingcolor: { selector: "reportTouchingColor", slots: ["COLOR"] },
   sensing_coloristouchingcolor: { selector: "reportColorIsTouchingColor", slots: ["COLOR", "COLOR2"] },
   sensing_distanceto: { selector: "reportDistanceTo", slots: ["DISTANCETOMENU"] },
-  sensing_setdragmode: { selector: "setDraggableTo", slots: ["DRAG_MODE"] },
+  // sensing_setdragmode handled in snap-writer.ts (no Snap equivalent block)
 
   // Operators
   operator_add: { selector: "reportSum", slots: ["NUM1", "NUM2"] },

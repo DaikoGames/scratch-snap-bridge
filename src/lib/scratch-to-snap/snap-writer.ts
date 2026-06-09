@@ -462,6 +462,24 @@ const handlers: Record<string, Handler> = {
       el("l", {}, b.fields.OPERATOR ?? "sqrt"),
       argOrLiteral(b.inputs.NUM, ctx, "0"),
     ),
+  // Snap! has no native text-contains primitive. Emulate with:
+  //   (length of (split text by sub)) > 1
+  operator_contains: (b, ctx) =>
+    el(
+      "block",
+      { s: "reportGreaterThan" },
+      el(
+        "block",
+        { s: "reportListLength" },
+        el(
+          "block",
+          { s: "reportTextSplit" },
+          argOrLiteral(b.inputs.STRING1, ctx, ""),
+          argOrLiteral(b.inputs.STRING2, ctx, ""),
+        ),
+      ),
+      el("l", {}, "1"),
+    ),
 
   // ---- Custom blocks (procedures) ---------------------------------------
   procedures_call: (b, ctx) => {

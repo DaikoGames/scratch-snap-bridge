@@ -285,7 +285,7 @@ function inlineValue(value: unknown[]): IRArg {
 }
 
 function menuValue(value: string): IRArg {
-  return value.startsWith("_") ? { kind: "special", name: value } : { kind: "option", value };
+  return value.startsWith("_") ? { kind: "special", name: value } : value;
 }
 
 function isMenuOpcode(op: string): boolean {

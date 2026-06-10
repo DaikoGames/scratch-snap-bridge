@@ -25,7 +25,13 @@ export interface IRList {
   items: (string | number)[];
 }
 
-export type IRArg = string | number | boolean | IRBlock | null;
+export type IRInputRef =
+  | { kind: "variable"; name: string }
+  | { kind: "list"; name: string }
+  | { kind: "special"; name: string }
+  | { kind: "option"; value: string };
+
+export type IRArg = string | number | boolean | IRBlock | IRInputRef | null;
 
 export interface IRMutation {
   proccode: string;

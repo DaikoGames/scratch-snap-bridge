@@ -7,7 +7,7 @@
 
 import { simpleMap } from "./blocks";
 import { el, XmlNode } from "./xml";
-import type { IRBlock, IRProject, IRScript, IRTarget } from "./types";
+import type { IRBlock, IRInputRef, IRProject, IRScript, IRTarget } from "./types";
 
 const SNAP_APP = "Snap! 8.0, https://snap.berkeley.edu";
 const SNAP_VERSION = "2";
@@ -23,6 +23,7 @@ interface ProcDef {
 
 interface RenderCtx {
   procDefs: ProcDef[];
+  procSpecs: Map<string, string>;
   // Scope of argument names currently in effect inside a procedure body.
   // argument_reporter_string_number lookups consult this to know whether to
   // emit <block var="..."/> (proc arg) vs reportGetVar.
@@ -33,6 +34,7 @@ interface RenderCtx {
 function newCtx(unknownOpcodes?: Set<string>): RenderCtx {
   return {
     procDefs: [],
+    procSpecs: new Map(),
     procArgScope: new Set(),
     unknownOpcodes: unknownOpcodes ?? new Set(),
   };
@@ -187,6 +189,10 @@ function buildScripts(target: IRTarget, ctx: RenderCtx): XmlNode {
     // become a <block-definition> in the <blocks> section, not a script.
     if (script.blocks[0]?.opcode === "procedures_definition") {
       collectProcDef(script, ctx);
+    }
+  }
+  for (const script of target.scripts) {
+    if (script.blocks[0]?.opcode === "procedures_definition") {
       continue;
     }
     scripts.add(buildScript(script, ctx));

@@ -265,16 +265,27 @@ function extractInputValue(
     if (child.shadow && isMenuOpcode(child.opcode)) {
       const fieldVals = Object.values(child.fields || {});
       if (fieldVals.length && Array.isArray(fieldVals[0])) {
-        return String((fieldVals[0] as unknown[])[0] ?? "");
+        return menuValue(String((fieldVals[0] as unknown[])[0] ?? ""));
       }
     }
     return buildBlock(inner, blocks);
   }
   if (Array.isArray(inner)) {
-    // Literal shadow: [type, value, ...]
-    return (inner[1] as string) ?? "";
+    return inlineValue(inner);
   }
   return "";
+}
+
+function inlineValue(value: unknown[]): IRArg {
+  const type = Number(value[0]);
+  const payload = value[1];
+  if (type === 12) return { kind: "variable", name: String(payload ?? "") };
+  if (type === 13) return { kind: "list", name: String(payload ?? "") };
+  return String(payload ?? "");
+}
+
+function menuValue(value: string): IRArg {
+  return value.startsWith("_") ? { kind: "special", name: value } : { kind: "option", value };
 }
 
 function isMenuOpcode(op: string): boolean {

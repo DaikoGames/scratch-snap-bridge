@@ -474,23 +474,23 @@ const handlers: Record<string, Handler> = {
     el("block", { s: "doShowVar" }, el("l", {}, b.fields.VARIABLE ?? "")),
   data_hidevariable: (b) =>
     el("block", { s: "doHideVar" }, el("l", {}, b.fields.VARIABLE ?? "")),
-  data_variable: (b) => el("block", { s: "reportGetVar" }, el("l", {}, b.fields.VARIABLE ?? "")),
+  data_variable: (b) => variableReporter(b.fields.VARIABLE ?? ""),
 
   // ---- Lists --------------------------------------------------------------
-  data_listcontents: (b) => el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+  data_listcontents: (b) => variableReporter(b.fields.LIST ?? ""),
   data_addtolist: (b, ctx) =>
     el(
       "block",
       { s: "doAddToList" },
       argOrLiteral(b.inputs.ITEM, ctx, ""),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_deleteoflist: (b, ctx) =>
     el(
       "block",
       { s: "doDeleteFromList" },
       argOrLiteral(b.inputs.INDEX, ctx, "1"),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_insertatlist: (b, ctx) =>
     el(
@@ -498,14 +498,14 @@ const handlers: Record<string, Handler> = {
       { s: "doInsertInList" },
       argOrLiteral(b.inputs.ITEM, ctx, ""),
       argOrLiteral(b.inputs.INDEX, ctx, "1"),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_replaceitemoflist: (b, ctx) =>
     el(
       "block",
       { s: "doReplaceInList" },
       argOrLiteral(b.inputs.INDEX, ctx, "1"),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
       argOrLiteral(b.inputs.ITEM, ctx, ""),
     ),
   data_itemoflist: (b, ctx) =>
@@ -513,19 +513,19 @@ const handlers: Record<string, Handler> = {
       "block",
       { s: "reportListItem" },
       argOrLiteral(b.inputs.INDEX, ctx, "1"),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_lengthoflist: (b) =>
     el(
       "block",
       { s: "reportListLength" },
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_listcontainsitem: (b, ctx) =>
     el(
       "block",
       { s: "reportListContainsItem" },
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
       argOrLiteral(b.inputs.ITEM, ctx, ""),
     ),
   data_itemnumoflist: (b, ctx) =>
@@ -533,14 +533,14 @@ const handlers: Record<string, Handler> = {
       "block",
       { s: "reportListIndex" },
       argOrLiteral(b.inputs.ITEM, ctx, ""),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_deletealloflist: (b) =>
     el(
       "block",
       { s: "doDeleteFromList" },
       el("l", {}, "all"),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_showlist: (b) => el("block", { s: "doShowVar" }, el("l", {}, b.fields.LIST ?? "")),
   data_hidelist: (b) => el("block", { s: "doHideVar" }, el("l", {}, b.fields.LIST ?? "")),

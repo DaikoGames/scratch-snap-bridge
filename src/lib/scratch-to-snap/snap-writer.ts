@@ -554,7 +554,21 @@ function buildBlock(block: IRBlock, ctx: RenderCtx): XmlNode {
 
 function buildArg(arg: IRBlock["inputs"][string], ctx: RenderCtx): XmlNode {
   if (arg === null || arg === undefined) return el("l", {}, "");
-  if (typeof arg === "object") return buildBlock(arg, ctx);
+  if (typeof arg === "object") {
+    if ("kind" in arg) {
+      switch (arg.kind) {
+        case "variable":
+          return el("block", { s: "reportGetVar" }, el("l", {}, arg.name));
+        case "list":
+          return el("block", { s: "reportGetVar" }, el("l", {}, arg.name));
+        case "special":
+          return el("l", {}, arg.name);
+        case "option":
+          return el("l", {}, arg.value);
+      }
+    }
+    return buildBlock(arg, ctx);
+  }
   return el("l", {}, String(arg));
 }
 
@@ -582,7 +596,7 @@ function collectProcDef(script: IRScript, ctx: RenderCtx): void {
   if (!def) return;
   // procedures_definition has input "custom_block" pointing to a procedures_prototype.
   const proto = def.inputs.custom_block;
-  if (!proto || typeof proto !== "object") return;
+  if (!proto || typeof proto !== "object" || "kind" in proto) return;
   const m = proto.mutation;
   if (!m) return;
   const argNames = m.argumentNames;

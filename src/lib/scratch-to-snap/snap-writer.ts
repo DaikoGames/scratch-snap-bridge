@@ -245,18 +245,47 @@ type Handler = (block: IRBlock, ctx: RenderCtx) => XmlNode;
 const handlers: Record<string, Handler> = {
   // ---- Motion ------------------------------------------------------------
   motion_goto: (b, ctx) =>
-    el("block", { s: "doGotoObject" }, argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
+    el("block", { s: "doGotoObject" }, targetMenu(b.inputs.TO, ctx, "mouse-pointer")),
   motion_pointtowards: (b, ctx) =>
-    el("block", { s: "doFaceTowards" }, argOrLiteral(b.inputs.TOWARDS, ctx, "_mouse_")),
-  motion_setrotationstyle: (b) => {
-    // Snap! has no first-class rotation-style block; the sprite's rotation
-    // attribute is set declaratively on the <sprite rotation="..."> tag.
-    // Emit a harmless bubble so the project still loads and the user can see
-    // which style was requested.
+    el("block", { s: "doFaceTowards" }, targetMenu(b.inputs.TOWARDS, ctx, "mouse-pointer")),
+  motion_setrotationstyle: (b, ctx) => {
+    const spec = ensureHelper(
+      ctx,
+      "set rotation style to %'style'",
+      ["style"],
+      ["all around"],
+      [], // no-op body (Snap! has no rotation-style primitive)
+    );
+    const node = el("custom-block", { s: spec }, el("l", {}, mapRotationStyle(b.fields.STYLE)));
+    return node;
+  },
+
+  // ---- Looks -------------------------------------------------------------
+  looks_costumenumbername: (b) => {
+    if ((b.fields.NUMBER_NAME ?? "number") === "name") {
+      return el(
+        "block",
+        { s: "reportAttributeOf" },
+        el("l", {}, "costume name"),
+        el("l", {}, "myself"),
+      );
+    }
+    return el("block", { s: "getCostumeIdx" });
+  },
+  looks_backdropnumbername: (b) => {
+    if ((b.fields.NUMBER_NAME ?? "number") === "name") {
+      return el(
+        "block",
+        { s: "reportAttributeOf" },
+        el("l", {}, "costume name"),
+        el("l", {}, "Stage"),
+      );
+    }
     return el(
       "block",
-      { s: "bubble" },
-      el("l", {}, `set rotation style: ${mapRotationStyle(b.fields.STYLE)}`),
+      { s: "reportAttributeOf" },
+      el("l", {}, "costume #"),
+      el("l", {}, "Stage"),
     );
   },
 

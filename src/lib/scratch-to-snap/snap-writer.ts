@@ -596,7 +596,7 @@ function collectProcDef(script: IRScript, ctx: RenderCtx): void {
   if (!def) return;
   // procedures_definition has input "custom_block" pointing to a procedures_prototype.
   const proto = def.inputs.custom_block;
-  if (!proto || typeof proto !== "object") return;
+  if (!proto || typeof proto !== "object" || "kind" in proto) return;
   const m = proto.mutation;
   if (!m) return;
   const argNames = m.argumentNames;

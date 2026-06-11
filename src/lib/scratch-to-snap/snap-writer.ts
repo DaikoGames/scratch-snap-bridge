@@ -19,6 +19,9 @@ interface ProcDef {
   argDefaults: string[];
   body: IRBlock[];
   warp: boolean;
+  category?: string;
+  type?: string;
+  bodyPrebuilt?: XmlNode[]; // For auto-emitted helper blocks
 }
 
 interface RenderCtx {
@@ -29,6 +32,7 @@ interface RenderCtx {
   // emit <block var="..."/> (proc arg) vs reportGetVar.
   procArgScope: Set<string>;
   unknownOpcodes: Set<string>;
+  autoBlocks: Set<string>; // Spec strings of helper blocks already added
 }
 
 function newCtx(unknownOpcodes?: Set<string>): RenderCtx {
@@ -37,7 +41,33 @@ function newCtx(unknownOpcodes?: Set<string>): RenderCtx {
     procSpecs: new Map(),
     procArgScope: new Set(),
     unknownOpcodes: unknownOpcodes ?? new Set(),
+    autoBlocks: new Set(),
   };
+}
+
+// Register a helper custom block once per target render. Returns the spec so
+// the caller can emit a <custom-block s="..."> reference to it.
+function ensureHelper(
+  ctx: RenderCtx,
+  spec: string,
+  argNames: string[],
+  argDefaults: string[],
+  body: XmlNode[],
+  type: string = "command",
+): string {
+  if (ctx.autoBlocks.has(spec)) return spec;
+  ctx.autoBlocks.add(spec);
+  ctx.procDefs.push({
+    spec,
+    argNames,
+    argDefaults,
+    body: [],
+    bodyPrebuilt: body,
+    warp: false,
+    category: "other",
+    type,
+  });
+  return spec;
 }
 
 export function projectToSnapXml(project: IRProject, _projectName: string): string {

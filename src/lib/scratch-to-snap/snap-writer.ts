@@ -418,11 +418,31 @@ const handlers: Record<string, Handler> = {
   },
   sensing_username: () => el("block", { s: "reportUsername" }),
   sensing_loudness: () => el("block", { s: "reportAudio" }, el("l", {}, "volume")),
-  sensing_setdragmode: (b) =>
+  sensing_setdragmode: (b, ctx) => {
+    const spec = ensureHelper(
+      ctx,
+      "set drag mode to %'mode'",
+      ["mode"],
+      ["draggable"],
+      [], // no-op body (Snap! draggability is a sprite attribute, not a block)
+    );
+    return el(
+      "custom-block",
+      { s: spec },
+      el("l", {}, b.fields.DRAG_MODE ?? "draggable"),
+    );
+  },
+  sensing_touchingobject: (b, ctx) =>
     el(
       "block",
-      { s: "bubble" },
-      el("l", {}, `set drag mode: ${b.fields.DRAG_MODE ?? "draggable"} (configure via right-click in Snap!)`),
+      { s: "reportTouchingObject" },
+      targetMenu(b.inputs.TOUCHINGOBJECTMENU, ctx, "mouse-pointer"),
+    ),
+  sensing_distanceto: (b, ctx) =>
+    el(
+      "block",
+      { s: "reportDistanceTo" },
+      targetMenu(b.inputs.DISTANCETOMENU, ctx, "mouse-pointer"),
     ),
 
   // ---- Variables (slot order is reversed from sb3) -----------------------

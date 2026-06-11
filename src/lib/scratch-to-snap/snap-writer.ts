@@ -536,14 +536,39 @@ const handlers: Record<string, Handler> = {
   data_hidelist: (b) => el("block", { s: "doHideVar" }, el("l", {}, b.fields.LIST ?? "")),
 
   // ---- Motion (extras) ---------------------------------------------------
-  motion_glideto: (b, ctx) =>
-    el(
+  motion_glideto: (b, ctx) => {
+    const secs = argOrLiteral(b.inputs.SECS, ctx, "1");
+    const to = b.inputs.TO;
+    // Special menu values need x/y synthesized rather than reportAttributeOf.
+    if (to && typeof to === "object" && "kind" in to && to.kind === "special") {
+      if (to.name === "_random_") {
+        return el(
+          "block",
+          { s: "doGlide" },
+          secs,
+          el("block", { s: "reportRandom" }, el("l", {}, "-240"), el("l", {}, "240")),
+          el("block", { s: "reportRandom" }, el("l", {}, "-180"), el("l", {}, "180")),
+        );
+      }
+      if (to.name === "_mouse_") {
+        return el(
+          "block",
+          { s: "doGlide" },
+          secs,
+          el("block", { s: "reportMouseX" }),
+          el("block", { s: "reportMouseY" }),
+        );
+      }
+    }
+    const target = targetMenu(to, ctx, "mouse-pointer");
+    return el(
       "block",
       { s: "doGlide" },
-      argOrLiteral(b.inputs.SECS, ctx, "1"),
-      el("block", { s: "reportAttributeOf" }, el("l", {}, "x position"), argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
-      el("block", { s: "reportAttributeOf" }, el("l", {}, "y position"), argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
-    ),
+      secs,
+      el("block", { s: "reportAttributeOf" }, el("l", {}, "x position"), target),
+      el("block", { s: "reportAttributeOf" }, el("l", {}, "y position"), cloneNode(target)),
+    );
+  },
 
   // ---- Operators ---------------------------------------------------------
   operator_mathop: (b, ctx) =>

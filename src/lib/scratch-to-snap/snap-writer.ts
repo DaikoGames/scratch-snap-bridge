@@ -70,6 +70,15 @@ function ensureHelper(
   return spec;
 }
 
+function helperReporter(ctx: RenderCtx, spec: string, value: XmlNode): XmlNode {
+  ensureHelper(ctx, spec, [], [], [el("block", { s: "doReport" }, value)], "reporter");
+  return el("custom-block", { s: spec, scope: "local" });
+}
+
+function variableReporter(name: string): XmlNode {
+  return el("block", { var: name });
+}
+
 export function projectToSnapXml(project: IRProject, _projectName: string): string {
   const unknownOpcodes = new Set<string>();
   const stageNode = buildStage(project, unknownOpcodes);

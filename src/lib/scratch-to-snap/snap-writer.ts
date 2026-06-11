@@ -625,14 +625,14 @@ const handlers: Record<string, Handler> = {
     if (ctx.procArgScope.has(name)) {
       return el("block", { var: name });
     }
-    return el("block", { s: "reportGetVar" }, el("l", {}, name));
+    return variableReporter(name);
   },
   argument_reporter_boolean: (b, ctx) => {
     const name = b.fields.VALUE ?? "";
     if (ctx.procArgScope.has(name)) {
       return el("block", { var: name });
     }
-    return el("block", { s: "reportGetVar" }, el("l", {}, name));
+    return variableReporter(name);
   },
 };
 
@@ -672,9 +672,9 @@ function buildArg(arg: IRBlock["inputs"][string], ctx: RenderCtx): XmlNode {
     if ("kind" in arg) {
       switch (arg.kind) {
         case "variable":
-          return el("block", { s: "reportGetVar" }, el("l", {}, arg.name));
+          return variableReporter(arg.name);
         case "list":
-          return el("block", { s: "reportGetVar" }, el("l", {}, arg.name));
+          return variableReporter(arg.name);
         case "special":
           return el("l", {}, translateSpecial(arg.name));
         case "option":

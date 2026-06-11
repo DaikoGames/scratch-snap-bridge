@@ -256,36 +256,37 @@ const handlers: Record<string, Handler> = {
       ["all around"],
       [], // no-op body (Snap! has no rotation-style primitive)
     );
-    const node = el("custom-block", { s: spec }, el("l", {}, mapRotationStyle(b.fields.STYLE)));
+    const node = el(
+      "custom-block",
+      { s: spec, scope: "local" },
+      el("l", {}, mapRotationStyle(b.fields.STYLE)),
+    );
     return node;
   },
 
   // ---- Looks -------------------------------------------------------------
-  looks_costumenumbername: (b) => {
+  looks_costumenumbername: (b, ctx) => {
     if ((b.fields.NUMBER_NAME ?? "number") === "name") {
-      return el(
-        "block",
-        { s: "reportAttributeOf" },
-        el("l", {}, "costume name"),
-        el("l", {}, "myself"),
+      return helperReporter(
+        ctx,
+        "costume name",
+        el("block", { s: "reportAttributeOf" }, el("l", {}, "costume name"), el("l", {}, "myself")),
       );
     }
-    return el("block", { s: "getCostumeIdx" });
+    return helperReporter(ctx, "costume number", el("block", { s: "getCostumeIdx" }));
   },
-  looks_backdropnumbername: (b) => {
+  looks_backdropnumbername: (b, ctx) => {
     if ((b.fields.NUMBER_NAME ?? "number") === "name") {
-      return el(
-        "block",
-        { s: "reportAttributeOf" },
-        el("l", {}, "costume name"),
-        el("l", {}, "Stage"),
+      return helperReporter(
+        ctx,
+        "backdrop name",
+        el("block", { s: "reportAttributeOf" }, el("l", {}, "costume name"), el("l", {}, "Stage")),
       );
     }
-    return el(
-      "block",
-      { s: "reportAttributeOf" },
-      el("l", {}, "costume #"),
-      el("l", {}, "Stage"),
+    return helperReporter(
+      ctx,
+      "backdrop number",
+      el("block", { s: "reportAttributeOf" }, el("l", {}, "costume #"), el("l", {}, "Stage")),
     );
   },
 
@@ -428,7 +429,7 @@ const handlers: Record<string, Handler> = {
     );
     return el(
       "custom-block",
-      { s: spec },
+      { s: spec, scope: "local" },
       el("l", {}, b.fields.DRAG_MODE ?? "draggable"),
     );
   },

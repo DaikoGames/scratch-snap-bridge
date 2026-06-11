@@ -765,8 +765,8 @@ function buildBlocksSection(ctx: RenderCtx): XmlNode {
     ctx.procArgScope = new Set(def.argNames);
     const bd = el("block-definition", {
       s: def.spec,
-      type: "command",
-      category: "other",
+      type: def.type ?? "command",
+      category: def.category ?? "other",
     });
     bd.add(el("header", {}));
     bd.add(el("code", {}));
@@ -781,7 +781,11 @@ function buildBlocksSection(ctx: RenderCtx): XmlNode {
       bd.add(inputs);
     }
     const bodyScript = el("script", {});
-    for (const b of def.body) bodyScript.add(buildBlock(b, ctx));
+    if (def.bodyPrebuilt) {
+      for (const n of def.bodyPrebuilt) bodyScript.add(n);
+    } else {
+      for (const b of def.body) bodyScript.add(buildBlock(b, ctx));
+    }
     bd.add(bodyScript);
     node.add(bd);
     ctx.procArgScope = new Set();

@@ -70,6 +70,15 @@ function ensureHelper(
   return spec;
 }
 
+function helperReporter(ctx: RenderCtx, spec: string, value: XmlNode): XmlNode {
+  ensureHelper(ctx, spec, [], [], [el("block", { s: "doReport" }, value)], "reporter");
+  return el("custom-block", { s: spec, scope: "local" });
+}
+
+function variableReporter(name: string): XmlNode {
+  return el("block", { var: name });
+}
+
 export function projectToSnapXml(project: IRProject, _projectName: string): string {
   const unknownOpcodes = new Set<string>();
   const stageNode = buildStage(project, unknownOpcodes);
@@ -256,36 +265,37 @@ const handlers: Record<string, Handler> = {
       ["all around"],
       [], // no-op body (Snap! has no rotation-style primitive)
     );
-    const node = el("custom-block", { s: spec }, el("l", {}, mapRotationStyle(b.fields.STYLE)));
+    const node = el(
+      "custom-block",
+      { s: spec, scope: "local" },
+      el("l", {}, mapRotationStyle(b.fields.STYLE)),
+    );
     return node;
   },
 
   // ---- Looks -------------------------------------------------------------
-  looks_costumenumbername: (b) => {
+  looks_costumenumbername: (b, ctx) => {
     if ((b.fields.NUMBER_NAME ?? "number") === "name") {
-      return el(
-        "block",
-        { s: "reportAttributeOf" },
-        el("l", {}, "costume name"),
-        el("l", {}, "myself"),
+      return helperReporter(
+        ctx,
+        "costume name",
+        el("block", { s: "reportAttributeOf" }, el("l", {}, "costume name"), el("l", {}, "myself")),
       );
     }
-    return el("block", { s: "getCostumeIdx" });
+    return helperReporter(ctx, "costume number", el("block", { s: "getCostumeIdx" }));
   },
-  looks_backdropnumbername: (b) => {
+  looks_backdropnumbername: (b, ctx) => {
     if ((b.fields.NUMBER_NAME ?? "number") === "name") {
-      return el(
-        "block",
-        { s: "reportAttributeOf" },
-        el("l", {}, "costume name"),
-        el("l", {}, "Stage"),
+      return helperReporter(
+        ctx,
+        "backdrop name",
+        el("block", { s: "reportAttributeOf" }, el("l", {}, "costume name"), el("l", {}, "Stage")),
       );
     }
-    return el(
-      "block",
-      { s: "reportAttributeOf" },
-      el("l", {}, "costume #"),
-      el("l", {}, "Stage"),
+    return helperReporter(
+      ctx,
+      "backdrop number",
+      el("block", { s: "reportAttributeOf" }, el("l", {}, "costume #"), el("l", {}, "Stage")),
     );
   },
 
@@ -428,7 +438,7 @@ const handlers: Record<string, Handler> = {
     );
     return el(
       "custom-block",
-      { s: spec },
+      { s: spec, scope: "local" },
       el("l", {}, b.fields.DRAG_MODE ?? "draggable"),
     );
   },
@@ -464,23 +474,23 @@ const handlers: Record<string, Handler> = {
     el("block", { s: "doShowVar" }, el("l", {}, b.fields.VARIABLE ?? "")),
   data_hidevariable: (b) =>
     el("block", { s: "doHideVar" }, el("l", {}, b.fields.VARIABLE ?? "")),
-  data_variable: (b) => el("block", { s: "reportGetVar" }, el("l", {}, b.fields.VARIABLE ?? "")),
+  data_variable: (b) => variableReporter(b.fields.VARIABLE ?? ""),
 
   // ---- Lists --------------------------------------------------------------
-  data_listcontents: (b) => el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+  data_listcontents: (b) => variableReporter(b.fields.LIST ?? ""),
   data_addtolist: (b, ctx) =>
     el(
       "block",
       { s: "doAddToList" },
       argOrLiteral(b.inputs.ITEM, ctx, ""),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_deleteoflist: (b, ctx) =>
     el(
       "block",
       { s: "doDeleteFromList" },
       argOrLiteral(b.inputs.INDEX, ctx, "1"),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_insertatlist: (b, ctx) =>
     el(
@@ -488,14 +498,14 @@ const handlers: Record<string, Handler> = {
       { s: "doInsertInList" },
       argOrLiteral(b.inputs.ITEM, ctx, ""),
       argOrLiteral(b.inputs.INDEX, ctx, "1"),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_replaceitemoflist: (b, ctx) =>
     el(
       "block",
       { s: "doReplaceInList" },
       argOrLiteral(b.inputs.INDEX, ctx, "1"),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
       argOrLiteral(b.inputs.ITEM, ctx, ""),
     ),
   data_itemoflist: (b, ctx) =>
@@ -503,19 +513,19 @@ const handlers: Record<string, Handler> = {
       "block",
       { s: "reportListItem" },
       argOrLiteral(b.inputs.INDEX, ctx, "1"),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_lengthoflist: (b) =>
     el(
       "block",
       { s: "reportListLength" },
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_listcontainsitem: (b, ctx) =>
     el(
       "block",
       { s: "reportListContainsItem" },
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
       argOrLiteral(b.inputs.ITEM, ctx, ""),
     ),
   data_itemnumoflist: (b, ctx) =>
@@ -523,14 +533,14 @@ const handlers: Record<string, Handler> = {
       "block",
       { s: "reportListIndex" },
       argOrLiteral(b.inputs.ITEM, ctx, ""),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_deletealloflist: (b) =>
     el(
       "block",
       { s: "doDeleteFromList" },
       el("l", {}, "all"),
-      el("block", { s: "reportGetVar" }, el("l", {}, b.fields.LIST ?? "")),
+      variableReporter(b.fields.LIST ?? ""),
     ),
   data_showlist: (b) => el("block", { s: "doShowVar" }, el("l", {}, b.fields.LIST ?? "")),
   data_hidelist: (b) => el("block", { s: "doHideVar" }, el("l", {}, b.fields.LIST ?? "")),
@@ -615,14 +625,14 @@ const handlers: Record<string, Handler> = {
     if (ctx.procArgScope.has(name)) {
       return el("block", { var: name });
     }
-    return el("block", { s: "reportGetVar" }, el("l", {}, name));
+    return variableReporter(name);
   },
   argument_reporter_boolean: (b, ctx) => {
     const name = b.fields.VALUE ?? "";
     if (ctx.procArgScope.has(name)) {
       return el("block", { var: name });
     }
-    return el("block", { s: "reportGetVar" }, el("l", {}, name));
+    return variableReporter(name);
   },
 };
 
@@ -662,9 +672,9 @@ function buildArg(arg: IRBlock["inputs"][string], ctx: RenderCtx): XmlNode {
     if ("kind" in arg) {
       switch (arg.kind) {
         case "variable":
-          return el("block", { s: "reportGetVar" }, el("l", {}, arg.name));
+          return variableReporter(arg.name);
         case "list":
-          return el("block", { s: "reportGetVar" }, el("l", {}, arg.name));
+          return variableReporter(arg.name);
         case "special":
           return el("l", {}, translateSpecial(arg.name));
         case "option":

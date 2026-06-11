@@ -666,7 +666,7 @@ function buildArg(arg: IRBlock["inputs"][string], ctx: RenderCtx): XmlNode {
         case "list":
           return el("block", { s: "reportGetVar" }, el("l", {}, arg.name));
         case "special":
-          return el("l", {}, arg.name);
+          return el("l", {}, translateSpecial(arg.name));
         case "option":
           return el("l", {}, arg.value);
       }
@@ -674,6 +674,47 @@ function buildArg(arg: IRBlock["inputs"][string], ctx: RenderCtx): XmlNode {
     return buildBlock(arg, ctx);
   }
   return el("l", {}, String(arg));
+}
+
+// Translate Scratch's "_mouse_" / "_random_" / "_edge_" sentinels into the
+// menu labels Snap! uses in doGotoObject / doFaceTowards / reportTouchingObject.
+function translateSpecial(name: string): string {
+  switch (name) {
+    case "_mouse_":
+      return "mouse-pointer";
+    case "_random_":
+      return "random position";
+    case "_edge_":
+      return "edge";
+    case "_myself_":
+      return "myself";
+    case "_stage_":
+      return "Stage";
+    default:
+      return name;
+  }
+}
+
+// Like buildArg but for menu slots: special sentinels become translated
+// literals, sprite names stay strings, and dropped-in reporters pass through.
+function targetMenu(
+  arg: IRBlock["inputs"][string] | undefined,
+  ctx: RenderCtx,
+  fallback: string,
+): XmlNode {
+  if (arg === undefined || arg === null || arg === "") return el("l", {}, fallback);
+  if (typeof arg === "object" && "kind" in arg && arg.kind === "special") {
+    return el("l", {}, translateSpecial(arg.name));
+  }
+  return buildArg(arg, ctx);
+}
+
+function cloneNode(node: XmlNode): XmlNode {
+  const copy = el(node.tag, { ...node.attrs });
+  for (const c of node.children) {
+    copy.add(typeof c === "string" ? c : cloneNode(c));
+  }
+  return copy;
 }
 
 function argOrLiteral(

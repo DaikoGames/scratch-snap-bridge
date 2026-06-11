@@ -19,6 +19,9 @@ interface ProcDef {
   argDefaults: string[];
   body: IRBlock[];
   warp: boolean;
+  category?: string;
+  type?: string;
+  bodyPrebuilt?: XmlNode[]; // For auto-emitted helper blocks
 }
 
 interface RenderCtx {
@@ -29,6 +32,7 @@ interface RenderCtx {
   // emit <block var="..."/> (proc arg) vs reportGetVar.
   procArgScope: Set<string>;
   unknownOpcodes: Set<string>;
+  autoBlocks: Set<string>; // Spec strings of helper blocks already added
 }
 
 function newCtx(unknownOpcodes?: Set<string>): RenderCtx {
@@ -37,7 +41,33 @@ function newCtx(unknownOpcodes?: Set<string>): RenderCtx {
     procSpecs: new Map(),
     procArgScope: new Set(),
     unknownOpcodes: unknownOpcodes ?? new Set(),
+    autoBlocks: new Set(),
   };
+}
+
+// Register a helper custom block once per target render. Returns the spec so
+// the caller can emit a <custom-block s="..."> reference to it.
+function ensureHelper(
+  ctx: RenderCtx,
+  spec: string,
+  argNames: string[],
+  argDefaults: string[],
+  body: XmlNode[],
+  type: string = "command",
+): string {
+  if (ctx.autoBlocks.has(spec)) return spec;
+  ctx.autoBlocks.add(spec);
+  ctx.procDefs.push({
+    spec,
+    argNames,
+    argDefaults,
+    body: [],
+    bodyPrebuilt: body,
+    warp: false,
+    category: "other",
+    type,
+  });
+  return spec;
 }
 
 export function projectToSnapXml(project: IRProject, _projectName: string): string {
@@ -215,18 +245,47 @@ type Handler = (block: IRBlock, ctx: RenderCtx) => XmlNode;
 const handlers: Record<string, Handler> = {
   // ---- Motion ------------------------------------------------------------
   motion_goto: (b, ctx) =>
-    el("block", { s: "doGotoObject" }, argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
+    el("block", { s: "doGotoObject" }, targetMenu(b.inputs.TO, ctx, "mouse-pointer")),
   motion_pointtowards: (b, ctx) =>
-    el("block", { s: "doFaceTowards" }, argOrLiteral(b.inputs.TOWARDS, ctx, "_mouse_")),
-  motion_setrotationstyle: (b) => {
-    // Snap! has no first-class rotation-style block; the sprite's rotation
-    // attribute is set declaratively on the <sprite rotation="..."> tag.
-    // Emit a harmless bubble so the project still loads and the user can see
-    // which style was requested.
+    el("block", { s: "doFaceTowards" }, targetMenu(b.inputs.TOWARDS, ctx, "mouse-pointer")),
+  motion_setrotationstyle: (b, ctx) => {
+    const spec = ensureHelper(
+      ctx,
+      "set rotation style to %'style'",
+      ["style"],
+      ["all around"],
+      [], // no-op body (Snap! has no rotation-style primitive)
+    );
+    const node = el("custom-block", { s: spec }, el("l", {}, mapRotationStyle(b.fields.STYLE)));
+    return node;
+  },
+
+  // ---- Looks -------------------------------------------------------------
+  looks_costumenumbername: (b) => {
+    if ((b.fields.NUMBER_NAME ?? "number") === "name") {
+      return el(
+        "block",
+        { s: "reportAttributeOf" },
+        el("l", {}, "costume name"),
+        el("l", {}, "myself"),
+      );
+    }
+    return el("block", { s: "getCostumeIdx" });
+  },
+  looks_backdropnumbername: (b) => {
+    if ((b.fields.NUMBER_NAME ?? "number") === "name") {
+      return el(
+        "block",
+        { s: "reportAttributeOf" },
+        el("l", {}, "costume name"),
+        el("l", {}, "Stage"),
+      );
+    }
     return el(
       "block",
-      { s: "bubble" },
-      el("l", {}, `set rotation style: ${mapRotationStyle(b.fields.STYLE)}`),
+      { s: "reportAttributeOf" },
+      el("l", {}, "costume #"),
+      el("l", {}, "Stage"),
     );
   },
 
@@ -359,11 +418,31 @@ const handlers: Record<string, Handler> = {
   },
   sensing_username: () => el("block", { s: "reportUsername" }),
   sensing_loudness: () => el("block", { s: "reportAudio" }, el("l", {}, "volume")),
-  sensing_setdragmode: (b) =>
+  sensing_setdragmode: (b, ctx) => {
+    const spec = ensureHelper(
+      ctx,
+      "set drag mode to %'mode'",
+      ["mode"],
+      ["draggable"],
+      [], // no-op body (Snap! draggability is a sprite attribute, not a block)
+    );
+    return el(
+      "custom-block",
+      { s: spec },
+      el("l", {}, b.fields.DRAG_MODE ?? "draggable"),
+    );
+  },
+  sensing_touchingobject: (b, ctx) =>
     el(
       "block",
-      { s: "bubble" },
-      el("l", {}, `set drag mode: ${b.fields.DRAG_MODE ?? "draggable"} (configure via right-click in Snap!)`),
+      { s: "reportTouchingObject" },
+      targetMenu(b.inputs.TOUCHINGOBJECTMENU, ctx, "mouse-pointer"),
+    ),
+  sensing_distanceto: (b, ctx) =>
+    el(
+      "block",
+      { s: "reportDistanceTo" },
+      targetMenu(b.inputs.DISTANCETOMENU, ctx, "mouse-pointer"),
     ),
 
   // ---- Variables (slot order is reversed from sb3) -----------------------
@@ -457,14 +536,39 @@ const handlers: Record<string, Handler> = {
   data_hidelist: (b) => el("block", { s: "doHideVar" }, el("l", {}, b.fields.LIST ?? "")),
 
   // ---- Motion (extras) ---------------------------------------------------
-  motion_glideto: (b, ctx) =>
-    el(
+  motion_glideto: (b, ctx) => {
+    const secs = argOrLiteral(b.inputs.SECS, ctx, "1");
+    const to = b.inputs.TO;
+    // Special menu values need x/y synthesized rather than reportAttributeOf.
+    if (to && typeof to === "object" && "kind" in to && to.kind === "special") {
+      if (to.name === "_random_") {
+        return el(
+          "block",
+          { s: "doGlide" },
+          secs,
+          el("block", { s: "reportRandom" }, el("l", {}, "-240"), el("l", {}, "240")),
+          el("block", { s: "reportRandom" }, el("l", {}, "-180"), el("l", {}, "180")),
+        );
+      }
+      if (to.name === "_mouse_") {
+        return el(
+          "block",
+          { s: "doGlide" },
+          secs,
+          el("block", { s: "reportMouseX" }),
+          el("block", { s: "reportMouseY" }),
+        );
+      }
+    }
+    const target = targetMenu(to, ctx, "mouse-pointer");
+    return el(
       "block",
       { s: "doGlide" },
-      argOrLiteral(b.inputs.SECS, ctx, "1"),
-      el("block", { s: "reportAttributeOf" }, el("l", {}, "x position"), argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
-      el("block", { s: "reportAttributeOf" }, el("l", {}, "y position"), argOrLiteral(b.inputs.TO, ctx, "_mouse_")),
-    ),
+      secs,
+      el("block", { s: "reportAttributeOf" }, el("l", {}, "x position"), target),
+      el("block", { s: "reportAttributeOf" }, el("l", {}, "y position"), cloneNode(target)),
+    );
+  },
 
   // ---- Operators ---------------------------------------------------------
   operator_mathop: (b, ctx) =>
@@ -562,7 +666,7 @@ function buildArg(arg: IRBlock["inputs"][string], ctx: RenderCtx): XmlNode {
         case "list":
           return el("block", { s: "reportGetVar" }, el("l", {}, arg.name));
         case "special":
-          return el("l", {}, arg.name);
+          return el("l", {}, translateSpecial(arg.name));
         case "option":
           return el("l", {}, arg.value);
       }
@@ -570,6 +674,47 @@ function buildArg(arg: IRBlock["inputs"][string], ctx: RenderCtx): XmlNode {
     return buildBlock(arg, ctx);
   }
   return el("l", {}, String(arg));
+}
+
+// Translate Scratch's "_mouse_" / "_random_" / "_edge_" sentinels into the
+// menu labels Snap! uses in doGotoObject / doFaceTowards / reportTouchingObject.
+function translateSpecial(name: string): string {
+  switch (name) {
+    case "_mouse_":
+      return "mouse-pointer";
+    case "_random_":
+      return "random position";
+    case "_edge_":
+      return "edge";
+    case "_myself_":
+      return "myself";
+    case "_stage_":
+      return "Stage";
+    default:
+      return name;
+  }
+}
+
+// Like buildArg but for menu slots: special sentinels become translated
+// literals, sprite names stay strings, and dropped-in reporters pass through.
+function targetMenu(
+  arg: IRBlock["inputs"][string] | undefined,
+  ctx: RenderCtx,
+  fallback: string,
+): XmlNode {
+  if (arg === undefined || arg === null || arg === "") return el("l", {}, fallback);
+  if (typeof arg === "object" && "kind" in arg && arg.kind === "special") {
+    return el("l", {}, translateSpecial(arg.name));
+  }
+  return buildArg(arg, ctx);
+}
+
+function cloneNode(node: XmlNode): XmlNode {
+  const copy = el(node.tag, { ...node.attrs });
+  for (const c of node.children) {
+    copy.add(typeof c === "string" ? c : cloneNode(c));
+  }
+  return copy;
 }
 
 function argOrLiteral(
@@ -620,8 +765,8 @@ function buildBlocksSection(ctx: RenderCtx): XmlNode {
     ctx.procArgScope = new Set(def.argNames);
     const bd = el("block-definition", {
       s: def.spec,
-      type: "command",
-      category: "other",
+      type: def.type ?? "command",
+      category: def.category ?? "other",
     });
     bd.add(el("header", {}));
     bd.add(el("code", {}));
@@ -636,7 +781,11 @@ function buildBlocksSection(ctx: RenderCtx): XmlNode {
       bd.add(inputs);
     }
     const bodyScript = el("script", {});
-    for (const b of def.body) bodyScript.add(buildBlock(b, ctx));
+    if (def.bodyPrebuilt) {
+      for (const n of def.bodyPrebuilt) bodyScript.add(n);
+    } else {
+      for (const b of def.body) bodyScript.add(buildBlock(b, ctx));
+    }
     bd.add(bodyScript);
     node.add(bd);
     ctx.procArgScope = new Set();

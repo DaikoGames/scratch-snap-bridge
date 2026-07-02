@@ -866,3 +866,38 @@
 
   return { convert: convert };
 });
+
+// =========================================================================
+// CLI entrypoint: `node converter.js <input.sb3> [output.xml]`
+// Only runs when invoked directly with Node, not when required or loaded
+// in a browser (typeof require / module guards keep browsers happy).
+// =========================================================================
+if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module) {
+  (async function runCli() {
+    var fs = require("fs");
+    var args = process.argv.slice(2);
+    if (args.length === 0 || args[0] === "-h" || args[0] === "--help") {
+      console.log("Usage: node converter.js <input.sb3> [output.xml]");
+      process.exit(args.length === 0 ? 1 : 0);
+    }
+    var inputPath = args[0];
+    var outputPath = args[1] || inputPath.replace(/\.sb3?$/i, "") + ".xml";
+    if (!fs.existsSync(inputPath)) {
+      console.error("Input not found: " + inputPath);
+      process.exit(1);
+    }
+    var buf = fs.readFileSync(inputPath);
+    var ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    try {
+      var out = await module.exports.convert(ab);
+      fs.writeFileSync(outputPath, out.xml, "utf8");
+      console.log("Wrote " + outputPath + " (" + Math.round(out.xml.length / 1024) + " KB)");
+      if (out.warnings.length) {
+        console.log("Unconverted opcodes: " + out.warnings.join(", "));
+      }
+    } catch (e) {
+      console.error(e && e.stack ? e.stack : e);
+      process.exit(1);
+    }
+  })();
+}

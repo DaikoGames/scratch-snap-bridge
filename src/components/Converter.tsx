@@ -173,17 +173,18 @@ export function Converter() {
         </p>
         <pre className="mt-3 overflow-x-auto rounded-lg bg-muted p-3 text-xs">
 {`npm install jszip
-node cli.js my-project.sb3 my-project.xml`}
+node converter.js my-project.sb3 my-project.xml`}
         </pre>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Just two files. Double-click <code className="rounded bg-muted px-1 py-0.5">index.html</code>
+          to use it in the browser — no server, no build.
+        </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <a href="/downloads/index.html" download>
             <Button variant="secondary" size="sm">index.html</Button>
           </a>
           <a href="/downloads/converter.js" download>
             <Button variant="secondary" size="sm">converter.js</Button>
-          </a>
-          <a href="/downloads/cli.js" download>
-            <Button variant="secondary" size="sm">cli.js</Button>
           </a>
           <a href="/downloads/README.md" download>
             <Button variant="secondary" size="sm">README.md</Button>

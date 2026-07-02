@@ -1,17 +1,50 @@
-import { useCallback, useRef, useState } from "react";
-import { convertScratchFile, type ConvertResult } from "@/lib/scratch-to-snap";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type Status =
   | { kind: "idle" }
   | { kind: "working"; filename: string }
-  | { kind: "done"; result: ConvertResult; sizeKb: number }
+  | { kind: "done"; filename: string; sizeKb: number; warnings: string[] }
   | { kind: "error"; message: string };
+
+// Load a <script> tag once and cache the promise.
+const scriptCache = new Map<string, Promise<void>>();
+function loadScript(src: string): Promise<void> {
+  const cached = scriptCache.get(src);
+  if (cached) return cached;
+  const p = new Promise<void>((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Failed to load " + src));
+    document.head.appendChild(s);
+  });
+  scriptCache.set(src, p);
+  return p;
+}
+
+interface ScratchToSnapAPI {
+  convert: (buf: ArrayBuffer) => Promise<{ xml: string; warnings: string[] }>;
+}
+
+async function getConverter(): Promise<ScratchToSnapAPI> {
+  await loadScript("https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js");
+  await loadScript("/converter.js");
+  const api = (window as unknown as { ScratchToSnap?: ScratchToSnapAPI }).ScratchToSnap;
+  if (!api) throw new Error("Converter script failed to initialize.");
+  return api;
+}
 
 export function Converter() {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Warm the converter script early so first click feels instant.
+  useEffect(() => {
+    getConverter().catch(() => {});
+  }, []);
 
   const triggerDownload = (xml: string, filename: string) => {
     const blob = new Blob([xml], { type: "text/xml" });
@@ -19,7 +52,6 @@ export function Converter() {
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
-    a.rel = "noopener";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -29,13 +61,22 @@ export function Converter() {
   const handleFile = useCallback(async (file: File) => {
     setStatus({ kind: "working", filename: file.name });
     try {
-      const result = await convertScratchFile(file);
-      const downloadResult: ConvertResult = { ...result, filename: "Project.xml" };
-      triggerDownload(downloadResult.xml, downloadResult.filename);
+      const lower = file.name.toLowerCase();
+      if (!lower.endsWith(".sb3")) {
+        throw new Error(
+          "Only .sb3 files are supported. Open your project on scratch.mit.edu and re-download it (or use the CLI on the .sb2/.sb file).",
+        );
+      }
+      const api = await getConverter();
+      const buf = await file.arrayBuffer();
+      const { xml, warnings } = await api.convert(buf);
+      const outName = file.name.replace(/\.sb3$/i, "") + ".xml";
+      triggerDownload(xml, outName);
       setStatus({
         kind: "done",
-        result: downloadResult,
-        sizeKb: Math.round(downloadResult.xml.length / 1024),
+        filename: outName,
+        sizeKb: Math.round(xml.length / 1024),
+        warnings,
       });
     } catch (err) {
       setStatus({
@@ -49,32 +90,26 @@ export function Converter() {
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragOver(false);
-      const f = e.dataTransfer.files?.[0];
-      if (f) handleFile(f);
+      const file = e.dataTransfer.files?.[0];
+      if (file) void handleFile(file);
     },
     [handleFile],
   );
-
-  const onDownload = () => {
-    if (status.kind !== "done") return;
-    triggerDownload(status.result.xml, status.result.filename);
-  };
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-16">
       <header className="text-center">
         <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-          <span className="inline-block size-2 rounded-full bg-primary" />
-          Browser-only · No upload
+          <span className="inline-block size-2 rounded-full bg-primary"></span>
+          Browser-only · No upload · Single JS file
         </div>
         <h1 className="text-balance text-5xl font-bold tracking-tight sm:text-6xl">
           Scratch <span className="bg-[image:var(--gradient-hero)] bg-clip-text text-transparent">→</span> Snap!
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-pretty text-base text-muted-foreground">
-          Drop a <code className="rounded bg-muted px-1.5 py-0.5 text-sm">.sb2</code> or{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 text-sm">.sb3</code> project and get a Snap!
-          BYOB <code className="rounded bg-muted px-1.5 py-0.5 text-sm">.xml</code> back. Sprites,
-          costumes, sounds, variables, and common blocks are converted.
+          Drop a <code className="rounded bg-muted px-1.5 py-0.5 text-sm">.sb3</code> project and get a
+          Snap! BYOB <code className="rounded bg-muted px-1.5 py-0.5 text-sm">.xml</code> back. The whole
+          converter is one plain JavaScript file — usable in the browser or on the command line.
         </p>
       </header>
 
@@ -85,109 +120,80 @@ export function Converter() {
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={`group relative rounded-3xl border-2 border-dashed bg-card p-10 text-center shadow-[var(--shadow-card)] transition-all ${
-          dragOver
-            ? "border-primary bg-primary/5 scale-[1.01]"
-            : "border-border hover:border-primary/50"
+        onClick={() => inputRef.current?.click()}
+        className={`group relative cursor-pointer rounded-3xl border-2 border-dashed bg-card p-10 text-center shadow-[var(--shadow-card)] transition-all ${
+          dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
         }`}
       >
         <input
           ref={inputRef}
           type="file"
-          accept=".sb,.sb2,.sb3"
+          accept=".sb3"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (f) handleFile(f);
+            if (f) void handleFile(f);
+            e.target.value = "";
           }}
         />
         <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-[image:var(--gradient-hero)] text-2xl shadow-[var(--shadow-pop)]">
           🐱
         </div>
-        <p className="text-lg font-semibold">Drop your Scratch project here</p>
+        <p className="text-lg font-semibold">Drop your .sb3 file here</p>
         <p className="mt-1 text-sm text-muted-foreground">or click to pick a file</p>
-        <Button
-          onClick={() => inputRef.current?.click()}
-          className="mt-6 h-11 rounded-full bg-primary px-6 text-primary-foreground shadow-[var(--shadow-pop)] hover:bg-primary/90"
-        >
-          Choose file
-        </Button>
+        <Button className="mt-6 h-11 rounded-full px-6">Choose file</Button>
+
+        {status.kind === "working" && (
+          <p className="mt-6 text-sm text-muted-foreground">Converting {status.filename}…</p>
+        )}
+        {status.kind === "done" && (
+          <div className="mt-6 text-sm">
+            <p className="font-medium text-primary">
+              ✓ Downloaded {status.filename} ({status.sizeKb} KB)
+            </p>
+            {status.warnings.length > 0 && (
+              <ul className="mx-auto mt-2 max-w-md list-disc text-left text-xs text-muted-foreground">
+                {status.warnings.slice(0, 5).map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {status.kind === "error" && (
+          <p className="mt-6 text-sm text-destructive">{status.message}</p>
+        )}
       </section>
 
-      <StatusPanel status={status} onDownload={onDownload} />
+      <section className="rounded-2xl border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold">Use it locally</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Download the standalone files. No build step, no TypeScript — just one HTML file and one JS
+          file. Run it from the command line with Node:
+        </p>
+        <pre className="mt-3 overflow-x-auto rounded-lg bg-muted p-3 text-xs">
+{`npm install jszip
+node cli.js my-project.sb3 my-project.xml`}
+        </pre>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <a href="/downloads/index.html" download>
+            <Button variant="secondary" size="sm">index.html</Button>
+          </a>
+          <a href="/downloads/converter.js" download>
+            <Button variant="secondary" size="sm">converter.js</Button>
+          </a>
+          <a href="/downloads/cli.js" download>
+            <Button variant="secondary" size="sm">cli.js</Button>
+          </a>
+          <a href="/downloads/README.md" download>
+            <Button variant="secondary" size="sm">README.md</Button>
+          </a>
+        </div>
+      </section>
 
       <footer className="text-center text-xs text-muted-foreground">
         Conversion runs entirely in your browser. Nothing is uploaded.
       </footer>
     </main>
-  );
-}
-
-function StatusPanel({ status, onDownload }: { status: Status; onDownload: () => void }) {
-  if (status.kind === "idle") return null;
-
-  if (status.kind === "working") {
-    return (
-      <div className="rounded-2xl border border-border bg-card p-5 text-sm shadow-[var(--shadow-card)]">
-        <div className="flex items-center gap-3">
-          <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <span>
-            Converting <span className="font-semibold">{status.filename}</span>…
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  if (status.kind === "error") {
-    return (
-      <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-5 text-sm text-destructive shadow-[var(--shadow-card)]">
-        <p className="font-semibold">Couldn't convert that file</p>
-        <p className="mt-1 text-destructive/80">{status.message}</p>
-      </div>
-    );
-  }
-
-  const { result, sizeKb } = status;
-  return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-card)]">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            Converted from <span className="font-mono uppercase">{result.format}</span> ·{" "}
-            {sizeKb} KB XML
-          </p>
-          <p className="mt-1 text-lg font-semibold">{result.filename}</p>
-        </div>
-        <Button
-          onClick={onDownload}
-          className="h-11 rounded-full bg-secondary px-6 text-secondary-foreground hover:bg-secondary/90"
-        >
-          Download .xml
-        </Button>
-      </div>
-      {result.warnings.length > 0 && (
-        <details className="mt-5 rounded-xl bg-muted/60 p-4 text-sm">
-          <summary className="cursor-pointer font-medium">
-            {result.warnings.length} unconverted block type
-            {result.warnings.length === 1 ? "" : "s"}
-          </summary>
-          <p className="mt-2 text-muted-foreground">
-            These blocks appear as labeled placeholders in the Snap! output so the rest of the
-            project still loads:
-          </p>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {result.warnings.map((w) => (
-              <li
-                key={w}
-                className="rounded-full border border-border bg-background px-2 py-0.5 font-mono text-xs"
-              >
-                {w}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-    </div>
   );
 }

@@ -393,6 +393,15 @@
   function variableReporter(name) {
     return el("block", { var: name });
   }
+  function optionLiteral(value) {
+    return el("l", {}, el("option", {}, value));
+  }
+  function boolReporter(value) {
+    return el("block", { s: "reportBoolean" }, el("l", {}, el("bool", {}, value ? "true" : "false")));
+  }
+  function myAttribute(name) {
+    return el("block", { s: "reportGet" }, optionLiteral(name));
+  }
 
   // ----- special-case handlers -----
   var handlers = {
@@ -403,8 +412,8 @@
       return el("block", { s: "doFaceTowards" }, targetMenu(b.inputs.TOWARDS, ctx, "mouse-pointer"));
     },
     motion_setrotationstyle: function (b, ctx) {
-      var spec = ensureHelper(ctx, "set rotation style to %'style'", ["style"], ["all around"], []);
-      return el("custom-block", { s: spec, scope: "local" }, el("l", {}, mapRotationStyle(b.fields.STYLE)));
+      return el("block", { s: "doSetVar" }, myAttribute("my rotation style"),
+        el("l", {}, String(rotationStyleToNumber(b.fields.STYLE))));
     },
     motion_glideto: function (b, ctx) {
       var secs = argOrLiteral(b.inputs.SECS, ctx, "1");
@@ -422,24 +431,21 @@
       }
       var target = targetMenu(to, ctx, "mouse-pointer");
       return el("block", { s: "doGlide" }, secs,
-        el("block", { s: "reportAttributeOf" }, el("l", {}, "x position"), target),
-        el("block", { s: "reportAttributeOf" }, el("l", {}, "y position"), cloneNode(target)));
+        el("block", { s: "reportAttributeOf" }, optionLiteral("x position"), target),
+        el("block", { s: "reportAttributeOf" }, optionLiteral("y position"), cloneNode(target)));
     },
 
     looks_costumenumbername: function (b, ctx) {
       if ((b.fields.NUMBER_NAME || "number") === "name") {
-        return helperReporter(ctx, "costume name",
-          el("block", { s: "reportAttributeOf" }, el("l", {}, "costume name"), el("l", {}, "myself")));
+        return el("block", { s: "reportAttributeOf" }, optionLiteral("costume name"), optionLiteral("myself"));
       }
-      return helperReporter(ctx, "costume number", el("block", { s: "getCostumeIdx" }));
+      return el("block", { s: "getCostumeIdx" });
     },
     looks_backdropnumbername: function (b, ctx) {
       if ((b.fields.NUMBER_NAME || "number") === "name") {
-        return helperReporter(ctx, "backdrop name",
-          el("block", { s: "reportAttributeOf" }, el("l", {}, "costume name"), el("l", {}, "Stage")));
+        return el("block", { s: "reportAttributeOf" }, optionLiteral("costume name"), el("l", {}, "Background"));
       }
-      return helperReporter(ctx, "backdrop number",
-        el("block", { s: "reportAttributeOf" }, el("l", {}, "costume #"), el("l", {}, "Stage")));
+      return el("block", { s: "reportAttributeOf" }, optionLiteral("costume #"), el("l", {}, "Background"));
     },
     looks_changeeffectby: function (b, ctx) {
       return el("block", { s: "changeEffect" }, el("l", {}, mapEffect(b.fields.EFFECT)),
@@ -488,9 +494,10 @@
     control_start_as_clone: function () { return el("block", { s: "receiveOnClone" }); },
 
     sensing_of: function (b, ctx) {
+      var prop = mapSensingProperty(b.fields.PROPERTY || "");
       return el("block", { s: "reportAttributeOf" },
-        el("l", {}, (b.fields.PROPERTY || "").toLowerCase()),
-        argOrLiteral(b.inputs.OBJECT, ctx, "Stage"));
+        prop.option ? optionLiteral(prop.value) : el("l", {}, prop.value),
+        argOrLiteral(b.inputs.OBJECT, ctx, "Background"));
     },
     sensing_current: function (b) {
       var which = (b.fields.CURRENTMENU || "YEAR").toLowerCase();
@@ -500,9 +507,8 @@
       return el("block", { s: "reportAudio" }, el("l", {}, "volume"));
     },
     sensing_setdragmode: function (b, ctx) {
-      var spec = ensureHelper(ctx, "set drag mode to %'mode'", ["mode"], ["draggable"], []);
-      return el("custom-block", { s: spec, scope: "local" },
-        el("l", {}, b.fields.DRAG_MODE || "draggable"));
+      return el("block", { s: "doSetVar" }, myAttribute("my draggable?"),
+        boolReporter((b.fields.DRAG_MODE || "draggable") === "draggable"));
     },
     sensing_touchingobject: function (b, ctx) {
       return el("block", { s: "reportTouchingObject" },
@@ -577,8 +583,8 @@
     procedures_call: function (b, ctx) {
       var proccode = (b.mutation && b.mutation.proccode) || "unknown";
       var ids = (b.mutation && b.mutation.argumentIds) || [];
-      var spec = snapSpecFromProccode(proccode, []);
-      var node = el("custom-block", { s: spec });
+      var spec = snapCallSpecFromProccode(proccode);
+      var node = el("custom-block", { s: spec, scope: "local" });
       for (var i = 0; i < ids.length; i++) node.add(argOrLiteral(b.inputs[ids[i]], ctx, ""));
       return node;
     },
@@ -632,7 +638,7 @@
       case "_random_": return "random position";
       case "_edge_": return "edge";
       case "_myself_": return "myself";
-      case "_stage_": return "Stage";
+      case "_stage_": return "Background";
       default: return name;
     }
   }
@@ -667,11 +673,31 @@
 
   function snapSpecFromProccode(proccode, argNames) {
     var i = 0;
-    return proccode.replace(/%[sb]/g, function () {
+    return proccode.replace(/%[sb]/g, function (marker) {
       var name = argNames[i] || ("arg" + (i + 1));
       i++;
       return "%'" + name + "'";
     });
+  }
+  function snapCallSpecFromProccode(proccode) {
+    return (proccode || "unknown").replace(/%s/g, "%s").replace(/%b/g, "%b");
+  }
+  function inputTypesFromProccode(proccode, count) {
+    var types = [], m, re = /%[sb]/g;
+    while ((m = re.exec(proccode || ""))) types.push(m[0] === "%b" ? "%b" : "%s");
+    while (types.length < count) types.push("%s");
+    return types;
+  }
+
+  function mapSensingProperty(property) {
+    var p = String(property || "").toLowerCase();
+    if (p === "backdrop #" || p === "backdrop number") return { option: true, value: "costume #" };
+    if (p === "backdrop name") return { option: true, value: "costume name" };
+    if (p === "costume #" || p === "costume number") return { option: true, value: "costume #" };
+    if (p === "costume name") return { option: true, value: "costume name" };
+    if (p === "x position" || p === "y position" || p === "direction" || p === "size" ||
+        p === "volume" || p === "width" || p === "height") return { option: true, value: p };
+    return { option: false, value: p };
   }
 
   function mapRotationStyle(style) {
@@ -817,6 +843,7 @@
     ctx.procDefs.push({
       spec: snapSpecFromProccode(m.proccode, m.argumentNames),
       argNames: m.argumentNames, argDefaults: m.argumentDefaults,
+      argTypes: inputTypesFromProccode(m.proccode, m.argumentNames.length),
       body: script.blocks.slice(1), warp: !!m.warp,
     });
   }
@@ -837,7 +864,7 @@
       if ((def.argNames || []).length) {
         var inputs = el("inputs", {});
         for (var k = 0; k < def.argNames.length; k++) {
-          inputs.add(el("input", { type: "%s" }, (def.argDefaults && def.argDefaults[k]) || ""));
+          inputs.add(el("input", { type: (def.argTypes && def.argTypes[k]) || "%s" }, (def.argDefaults && def.argDefaults[k]) || ""));
         }
         bd.add(inputs);
       }

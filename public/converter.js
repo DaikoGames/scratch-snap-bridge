@@ -506,6 +506,9 @@
     sensing_loudness: function () {
       return el("block", { s: "reportAudio" }, el("l", {}, "volume"));
     },
+    sensing_username: function (b, ctx) {
+      return helperReporter(ctx, "username", el("l", {}, ""));
+    },
     sensing_setdragmode: function (b, ctx) {
       return el("block", { s: "doSetVar" }, myAttribute("my draggable?"),
         boolReporter((b.fields.DRAG_MODE || "draggable") === "draggable"));

@@ -638,7 +638,7 @@
       case "_random_": return "random position";
       case "_edge_": return "edge";
       case "_myself_": return "myself";
-      case "_stage_": return "Stage";
+      case "_stage_": return "Background";
       default: return name;
     }
   }
@@ -673,11 +673,31 @@
 
   function snapSpecFromProccode(proccode, argNames) {
     var i = 0;
-    return proccode.replace(/%[sb]/g, function () {
+    return proccode.replace(/%[sb]/g, function (marker) {
       var name = argNames[i] || ("arg" + (i + 1));
       i++;
       return "%'" + name + "'";
     });
+  }
+  function snapCallSpecFromProccode(proccode) {
+    return (proccode || "unknown").replace(/%s/g, "%s").replace(/%b/g, "%b");
+  }
+  function inputTypesFromProccode(proccode, count) {
+    var types = [], m, re = /%[sb]/g;
+    while ((m = re.exec(proccode || ""))) types.push(m[0] === "%b" ? "%b" : "%s");
+    while (types.length < count) types.push("%s");
+    return types;
+  }
+
+  function mapSensingProperty(property) {
+    var p = String(property || "").toLowerCase();
+    if (p === "backdrop #" || p === "backdrop number") return { option: true, value: "costume #" };
+    if (p === "backdrop name") return { option: true, value: "costume name" };
+    if (p === "costume #" || p === "costume number") return { option: true, value: "costume #" };
+    if (p === "costume name") return { option: true, value: "costume name" };
+    if (p === "x position" || p === "y position" || p === "direction" || p === "size" ||
+        p === "volume" || p === "width" || p === "height") return { option: true, value: p };
+    return { option: false, value: p };
   }
 
   function mapRotationStyle(style) {

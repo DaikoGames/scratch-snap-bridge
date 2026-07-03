@@ -843,6 +843,7 @@
     ctx.procDefs.push({
       spec: snapSpecFromProccode(m.proccode, m.argumentNames),
       argNames: m.argumentNames, argDefaults: m.argumentDefaults,
+      argTypes: inputTypesFromProccode(m.proccode, m.argumentNames.length),
       body: script.blocks.slice(1), warp: !!m.warp,
     });
   }
@@ -863,7 +864,7 @@
       if ((def.argNames || []).length) {
         var inputs = el("inputs", {});
         for (var k = 0; k < def.argNames.length; k++) {
-          inputs.add(el("input", { type: "%s" }, (def.argDefaults && def.argDefaults[k]) || ""));
+          inputs.add(el("input", { type: (def.argTypes && def.argTypes[k]) || "%s" }, (def.argDefaults && def.argDefaults[k]) || ""));
         }
         bd.add(inputs);
       }

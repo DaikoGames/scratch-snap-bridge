@@ -186,9 +186,6 @@ node converter.js my-project.sb3 my-project.xml`}
           <a href="/downloads/converter.js" download>
             <Button variant="secondary" size="sm">converter.js</Button>
           </a>
-          <a href="/downloads/README.md" download>
-            <Button variant="secondary" size="sm">README.md</Button>
-          </a>
         </div>
       </section>
 

@@ -396,8 +396,8 @@
   function optionLiteral(value) {
     return el("l", {}, el("option", {}, value));
   }
-  function boolReporter(value) {
-    return el("block", { s: "reportBoolean" }, el("l", {}, el("bool", {}, value ? "true" : "false")));
+  function boolLiteral(value) {
+    return el("l", {}, el("bool", {}, value ? "true" : "false"));
   }
   function myAttribute(name) {
     return el("block", { s: "reportGet" }, optionLiteral(name));
@@ -412,7 +412,7 @@
       return el("block", { s: "doFaceTowards" }, targetMenu(b.inputs.TOWARDS, ctx, "mouse-pointer"));
     },
     motion_setrotationstyle: function (b, ctx) {
-      return el("block", { s: "doSetVar" }, myAttribute("my rotation style"),
+      return el("block", { s: "doSetVar" }, optionLiteral("my rotation style"),
         el("l", {}, String(rotationStyleToNumber(b.fields.STYLE))));
     },
     motion_glideto: function (b, ctx) {
@@ -510,8 +510,8 @@
       return helperReporter(ctx, "username", el("l", {}, ""));
     },
     sensing_setdragmode: function (b, ctx) {
-      return el("block", { s: "doSetVar" }, myAttribute("my draggable?"),
-        boolReporter((b.fields.DRAG_MODE || "draggable") === "draggable"));
+      return el("block", { s: "doSetVar" }, optionLiteral("my draggable?"),
+        boolLiteral((b.fields.DRAG_MODE || "draggable") === "draggable"));
     },
     sensing_touchingobject: function (b, ctx) {
       return el("block", { s: "reportTouchingObject" },
@@ -727,7 +727,7 @@
     var notes = "Converted from Scratch to Snap! by scratch-to-snap.js.";
     if (project.warnings.length) notes += "\nUnconverted opcodes: " + project.warnings.join(", ");
     var root = el("project", { name: "Project", app: "Snapinator", version: "1" },
-      el("notes", {}, notes), el("thumbnail", {}), stageNode);
+      el("notes", {}, notes), el("thumbnail", {}), stageNode, buildVariables(project.stage));
     return root.toString();
   }
 
@@ -743,7 +743,7 @@
     });
     stageNode.add(buildCostumes(stage));
     stageNode.add(buildSounds(stage));
-    stageNode.add(buildVariables(stage));
+    stageNode.add(el("variables", {}));
     stageNode.add(buildScripts(stage, ctx));
     stageNode.add(buildBlocksSection(ctx));
     var sprites = el("sprites", {});

@@ -14,9 +14,66 @@
 
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("jszip"));
+    var Z;
+    try { Z = require("jszip"); } catch (e) { Z = makeMiniZip(); }
+    module.exports = factory(Z);
   } else {
     root.ScratchToSnap = factory(root.JSZip);
+  }
+
+  // Minimal built-in ZIP reader for Node so the CLI works with zero installs.
+  // Handles stored (0) and deflate (8) entries — all SB3 files use these.
+  function makeMiniZip() {
+    var zlib = require("zlib");
+    return {
+      loadAsync: function (ab) {
+        var buf = Buffer.isBuffer(ab) ? ab : Buffer.from(ab);
+        var eocd = -1;
+        var min = Math.max(0, buf.length - 65558);
+        for (var i = buf.length - 22; i >= min; i--) {
+          if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+        }
+        if (eocd < 0) throw new Error("Not a valid .sb3 (zip) file");
+        var count = buf.readUInt16LE(eocd + 10);
+        var cdOff = buf.readUInt32LE(eocd + 16);
+        var files = {};
+        var p = cdOff;
+        for (var n = 0; n < count; n++) {
+          if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error("Bad central directory");
+          var method = buf.readUInt16LE(p + 10);
+          var compSize = buf.readUInt32LE(p + 20);
+          var nameLen = buf.readUInt16LE(p + 28);
+          var extraLen = buf.readUInt16LE(p + 30);
+          var commentLen = buf.readUInt16LE(p + 32);
+          var lhOff = buf.readUInt32LE(p + 42);
+          var name = buf.slice(p + 46, p + 46 + nameLen).toString("utf8");
+          var lhNameLen = buf.readUInt16LE(lhOff + 26);
+          var lhExtraLen = buf.readUInt16LE(lhOff + 28);
+          var dataStart = lhOff + 30 + lhNameLen + lhExtraLen;
+          files[name] = { method: method, data: buf.slice(dataStart, dataStart + compSize) };
+          p += 46 + nameLen + extraLen + commentLen;
+        }
+        function decode(entry) {
+          if (entry.method === 0) return entry.data;
+          if (entry.method === 8) return zlib.inflateRawSync(entry.data);
+          throw new Error("Unsupported zip compression method " + entry.method);
+        }
+        return Promise.resolve({
+          file: function (name) {
+            var e = files[name];
+            if (!e) return null;
+            return {
+              async: function (type) {
+                var d = decode(e);
+                if (type === "string") return Promise.resolve(d.toString("utf8"));
+                if (type === "uint8array") return Promise.resolve(new Uint8Array(d.buffer, d.byteOffset, d.byteLength));
+                return Promise.resolve(d);
+              },
+            };
+          },
+        });
+      },
+    };
   }
 })(typeof self !== "undefined" ? self : this, function (JSZip) {
   "use strict";

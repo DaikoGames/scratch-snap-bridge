@@ -499,13 +499,25 @@
         argOrLiteral(b.inputs.OBJECT, ctx, "Background"));
     },
     sensing_current: function (b) {
-      var which = (b.fields.CURRENTMENU || "YEAR").toLowerCase();
-      return el("block", { s: "reportDate" }, el("l", {}, which));
+      var raw = String(b.fields.CURRENTMENU || "YEAR").toUpperCase();
+      var map = { YEAR: "year", MONTH: "month", DATE: "date",
+        DAYOFWEEK: "day of week", HOUR: "hour", MINUTE: "minute", SECOND: "second" };
+      var which = map[raw] || raw.toLowerCase();
+      return el("block", { s: "reportDate" }, optionLiteral(which));
+    },
+    sensing_dayssince2000: function () {
+      // (current time in ms - 2000-01-01 UTC) / 86400000
+      return el("block", { s: "reportQuotient" },
+        el("block", { s: "reportDifference" },
+          el("block", { s: "reportDate" }, optionLiteral("time in milliseconds")),
+          el("l", {}, "946684800000")),
+        el("l", {}, "86400000"));
     },
     sensing_loudness: function () {
       return el("block", { s: "reportAudio" }, el("l", {}, "volume"));
     },
     sensing_username: function (b, ctx) {
+      // Snap has no built-in username; emit an empty string helper reporter.
       return helperReporter(ctx, "username", el("l", {}, ""));
     },
     sensing_setdragmode: function (b, ctx) {
@@ -515,6 +527,11 @@
     sensing_touchingobject: function (b, ctx) {
       return el("block", { s: "reportTouchingObject" },
         targetMenu(b.inputs.TOUCHINGOBJECTMENU, ctx, "mouse-pointer"));
+    },
+    sensing_coloristouchingcolor: function (b, ctx) {
+      return el("block", { s: "reportColorIsTouchingColor" },
+        argOrLiteral(b.inputs.COLOR, ctx, "0"),
+        argOrLiteral(b.inputs.COLOR2, ctx, "0"));
     },
     sensing_distanceto: function (b, ctx) {
       return el("block", { s: "reportDistanceTo" },

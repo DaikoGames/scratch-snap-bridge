@@ -14,9 +14,66 @@
 
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("jszip"));
+    var Z;
+    try { Z = require("jszip"); } catch (e) { Z = makeMiniZip(); }
+    module.exports = factory(Z);
   } else {
     root.ScratchToSnap = factory(root.JSZip);
+  }
+
+  // Minimal built-in ZIP reader for Node so the CLI works with zero installs.
+  // Handles stored (0) and deflate (8) entries — all SB3 files use these.
+  function makeMiniZip() {
+    var zlib = require("zlib");
+    return {
+      loadAsync: function (ab) {
+        var buf = Buffer.isBuffer(ab) ? ab : Buffer.from(ab);
+        var eocd = -1;
+        var min = Math.max(0, buf.length - 65558);
+        for (var i = buf.length - 22; i >= min; i--) {
+          if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+        }
+        if (eocd < 0) throw new Error("Not a valid .sb3 (zip) file");
+        var count = buf.readUInt16LE(eocd + 10);
+        var cdOff = buf.readUInt32LE(eocd + 16);
+        var files = {};
+        var p = cdOff;
+        for (var n = 0; n < count; n++) {
+          if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error("Bad central directory");
+          var method = buf.readUInt16LE(p + 10);
+          var compSize = buf.readUInt32LE(p + 20);
+          var nameLen = buf.readUInt16LE(p + 28);
+          var extraLen = buf.readUInt16LE(p + 30);
+          var commentLen = buf.readUInt16LE(p + 32);
+          var lhOff = buf.readUInt32LE(p + 42);
+          var name = buf.slice(p + 46, p + 46 + nameLen).toString("utf8");
+          var lhNameLen = buf.readUInt16LE(lhOff + 26);
+          var lhExtraLen = buf.readUInt16LE(lhOff + 28);
+          var dataStart = lhOff + 30 + lhNameLen + lhExtraLen;
+          files[name] = { method: method, data: buf.slice(dataStart, dataStart + compSize) };
+          p += 46 + nameLen + extraLen + commentLen;
+        }
+        function decode(entry) {
+          if (entry.method === 0) return entry.data;
+          if (entry.method === 8) return zlib.inflateRawSync(entry.data);
+          throw new Error("Unsupported zip compression method " + entry.method);
+        }
+        return Promise.resolve({
+          file: function (name) {
+            var e = files[name];
+            if (!e) return null;
+            return {
+              async: function (type) {
+                var d = decode(e);
+                if (type === "string") return Promise.resolve(d.toString("utf8"));
+                if (type === "uint8array") return Promise.resolve(new Uint8Array(d.buffer, d.byteOffset, d.byteLength));
+                return Promise.resolve(d);
+              },
+            };
+          },
+        });
+      },
+    };
   }
 })(typeof self !== "undefined" ? self : this, function (JSZip) {
   "use strict";
@@ -396,7 +453,10 @@
     return el("l", {}, el("option", {}, value));
   }
   function boolLiteral(value) {
-    return el("l", {}, el("bool", {}, value ? "true" : "false"));
+    // Wrap in reportBoolean so Snap sees a real boolean reporter (diamond),
+    // not a text literal "true"/"false".
+    return el("block", { s: "reportBoolean" },
+      el("l", {}, el("bool", {}, value ? "true" : "false")));
   }
   function myAttribute(name) {
     return el("block", { s: "reportGet" }, optionLiteral(name));
@@ -516,9 +576,10 @@
     sensing_loudness: function () {
       return el("block", { s: "reportAudio" }, el("l", {}, "volume"));
     },
-    sensing_username: function (b, ctx) {
-      // Snap has no built-in username; emit an empty string helper reporter.
-      return helperReporter(ctx, "username", el("l", {}, ""));
+    sensing_username: function () {
+      // Snap has no username block. Return an empty string literal so the
+      // slot is filled without breaking anything downstream.
+      return el("l", {}, "");
     },
     sensing_setdragmode: function (b, ctx) {
       return el("block", { s: "doSetVar" }, optionLiteral("my draggable?"),
@@ -620,9 +681,9 @@
     },
   };
 
-  function buildBlock(block, ctx) {
+  function buildBlock(block, ctx, shape) {
     var handler = handlers[block.opcode];
-    if (handler) return handler(block, ctx);
+    if (handler) return handler(block, ctx, shape);
     var spec = simpleMap[block.opcode];
     if (spec) {
       var node = el("block", { s: spec.selector });
@@ -636,8 +697,11 @@
       return node;
     }
     ctx.unknownOpcodes[block.opcode] = true;
-    return el("block", { s: "reportJoinWords" },
-      el("l", {}, "[unconverted: " + block.opcode + "]"), el("l", {}, ""));
+    // Emit a harmless placeholder so an unknown block doesn't wedge the whole
+    // script. In reporter slots we return an empty literal; in stack position
+    // we return a no-op doYield block.
+    if (shape === "reporter") return el("l", {}, "");
+    return el("block", { s: "doYield" });
   }
 
   function buildArg(arg, ctx) {
@@ -651,7 +715,7 @@
           case "option": return el("l", {}, arg.value);
         }
       }
-      return buildBlock(arg, ctx);
+      return buildBlock(arg, ctx, "reporter");
     }
     return el("l", {}, String(arg));
   }
@@ -691,7 +755,7 @@
   function branch(stack, ctx) {
     var node = el("script", {});
     var s = stack || [];
-    for (var i = 0; i < s.length; i++) node.add(buildBlock(s[i], ctx));
+    for (var i = 0; i < s.length; i++) node.add(buildBlock(s[i], ctx, "stack"));
     return node;
   }
 
@@ -852,7 +916,7 @@
       var s = target.scripts[j];
       if (s.blocks[0] && s.blocks[0].opcode === "procedures_definition") continue;
       var scriptNode = el("script", { x: s.x, y: s.y });
-      for (var b = 0; b < s.blocks.length; b++) scriptNode.add(buildBlock(s.blocks[b], ctx));
+      for (var b = 0; b < s.blocks.length; b++) scriptNode.add(buildBlock(s.blocks[b], ctx, "stack"));
       scripts.add(scriptNode);
     }
     return scripts;
@@ -896,7 +960,7 @@
       if (def.bodyPrebuilt) {
         for (var p = 0; p < def.bodyPrebuilt.length; p++) bodyScript.add(def.bodyPrebuilt[p]);
       } else {
-        for (var q = 0; q < def.body.length; q++) bodyScript.add(buildBlock(def.body[q], ctx));
+        for (var q = 0; q < def.body.length; q++) bodyScript.add(buildBlock(def.body[q], ctx, "stack"));
       }
       bd.add(bodyScript);
       node.add(bd);

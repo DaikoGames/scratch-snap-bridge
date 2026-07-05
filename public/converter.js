@@ -960,7 +960,7 @@
       if (def.bodyPrebuilt) {
         for (var p = 0; p < def.bodyPrebuilt.length; p++) bodyScript.add(def.bodyPrebuilt[p]);
       } else {
-        for (var q = 0; q < def.body.length; q++) bodyScript.add(buildBlock(def.body[q], ctx));
+        for (var q = 0; q < def.body.length; q++) bodyScript.add(buildBlock(def.body[q], ctx, "stack"));
       }
       bd.add(bodyScript);
       node.add(bd);

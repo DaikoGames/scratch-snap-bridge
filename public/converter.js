@@ -453,7 +453,10 @@
     return el("l", {}, el("option", {}, value));
   }
   function boolLiteral(value) {
-    return el("l", {}, el("bool", {}, value ? "true" : "false"));
+    // Wrap in reportBoolean so Snap sees a real boolean reporter (diamond),
+    // not a text literal "true"/"false".
+    return el("block", { s: "reportBoolean" },
+      el("l", {}, el("bool", {}, value ? "true" : "false")));
   }
   function myAttribute(name) {
     return el("block", { s: "reportGet" }, optionLiteral(name));

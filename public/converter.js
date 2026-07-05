@@ -571,6 +571,11 @@
       return el("block", { s: "reportListItem" }, argOrLiteral(b.inputs.INDEX, ctx, "1"),
         variableReporter(b.fields.LIST || ""));
     },
+    data_itemnumoflist: function (b, ctx) {
+      return el("block", { s: "reportListIndex" },
+        argOrLiteral(b.inputs.ITEM, ctx, ""),
+        variableReporter(b.fields.LIST || ""));
+    },
     data_lengthoflist: function (b) {
       return el("block", { s: "reportListLength" }, variableReporter(b.fields.LIST || ""));
     },

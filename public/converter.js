@@ -576,9 +576,10 @@
     sensing_loudness: function () {
       return el("block", { s: "reportAudio" }, el("l", {}, "volume"));
     },
-    sensing_username: function (b, ctx) {
-      // Snap has no built-in username; emit an empty string helper reporter.
-      return helperReporter(ctx, "username", el("l", {}, ""));
+    sensing_username: function () {
+      // Snap has no username block. Return an empty string literal so the
+      // slot is filled without breaking anything downstream.
+      return el("l", {}, "");
     },
     sensing_setdragmode: function (b, ctx) {
       return el("block", { s: "doSetVar" }, optionLiteral("my draggable?"),

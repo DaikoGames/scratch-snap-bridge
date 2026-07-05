@@ -349,7 +349,6 @@
     sensing_timer: { selector: "getTimer" },
     sensing_resettimer: { selector: "doResetTimer" },
     sensing_touchingcolor: { selector: "reportTouchingColor", slots: ["COLOR"] },
-    sensing_username: { selector: "reportUsername" },
 
     operator_add: { selector: "reportSum", slots: ["NUM1", "NUM2"] },
     operator_subtract: { selector: "reportDifference", slots: ["NUM1", "NUM2"] },

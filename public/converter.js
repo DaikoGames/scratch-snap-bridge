@@ -916,7 +916,7 @@
       var s = target.scripts[j];
       if (s.blocks[0] && s.blocks[0].opcode === "procedures_definition") continue;
       var scriptNode = el("script", { x: s.x, y: s.y });
-      for (var b = 0; b < s.blocks.length; b++) scriptNode.add(buildBlock(s.blocks[b], ctx));
+      for (var b = 0; b < s.blocks.length; b++) scriptNode.add(buildBlock(s.blocks[b], ctx, "stack"));
       scripts.add(scriptNode);
     }
     return scripts;

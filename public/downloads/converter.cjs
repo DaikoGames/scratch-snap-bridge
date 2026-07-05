@@ -928,7 +928,7 @@ if (typeof require !== "undefined" && typeof module !== "undefined" && require.m
     var fs = require("fs");
     var args = process.argv.slice(2);
     if (args.length === 0 || args[0] === "-h" || args[0] === "--help") {
-      console.log("Usage: node converter.js <input.sb3> [output.xml]");
+      console.log("Usage: node converter.cjs <input.sb3> [output.xml]");
       process.exit(args.length === 0 ? 1 : 0);
     }
     var inputPath = args[0];

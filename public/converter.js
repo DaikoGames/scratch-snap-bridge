@@ -681,9 +681,9 @@
     },
   };
 
-  function buildBlock(block, ctx) {
+  function buildBlock(block, ctx, shape) {
     var handler = handlers[block.opcode];
-    if (handler) return handler(block, ctx);
+    if (handler) return handler(block, ctx, shape);
     var spec = simpleMap[block.opcode];
     if (spec) {
       var node = el("block", { s: spec.selector });
@@ -697,8 +697,11 @@
       return node;
     }
     ctx.unknownOpcodes[block.opcode] = true;
-    return el("block", { s: "reportJoinWords" },
-      el("l", {}, "[unconverted: " + block.opcode + "]"), el("l", {}, ""));
+    // Emit a harmless placeholder so an unknown block doesn't wedge the whole
+    // script. In reporter slots we return an empty literal; in stack position
+    // we return a no-op doYield block.
+    if (shape === "reporter") return el("l", {}, "");
+    return el("block", { s: "doYield" });
   }
 
   function buildArg(arg, ctx) {
@@ -712,7 +715,7 @@
           case "option": return el("l", {}, arg.value);
         }
       }
-      return buildBlock(arg, ctx);
+      return buildBlock(arg, ctx, "reporter");
     }
     return el("l", {}, String(arg));
   }
@@ -752,7 +755,7 @@
   function branch(stack, ctx) {
     var node = el("script", {});
     var s = stack || [];
-    for (var i = 0; i < s.length; i++) node.add(buildBlock(s[i], ctx));
+    for (var i = 0; i < s.length; i++) node.add(buildBlock(s[i], ctx, "stack"));
     return node;
   }
 

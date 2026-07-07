@@ -172,7 +172,7 @@ export function Converter() {
           file. Run it from the command line with Node:
         </p>
         <pre className="mt-3 overflow-x-auto rounded-lg bg-muted p-3 text-xs">
-{`node converter.cjs my-project.sb3 my-project.xml`}
+{`node converter.js my-project.sb3 my-project.xml`}
         </pre>
         <p className="mt-3 text-sm text-muted-foreground">
           Just two files. Double-click <code className="rounded bg-muted px-1 py-0.5">index.html</code>

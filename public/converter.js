@@ -446,6 +446,13 @@
     ensureHelper(ctx, spec, [], [], [el("block", { s: "doReport" }, value)], "reporter");
     return el("custom-block", { s: spec, scope: "local" });
   }
+  function helperCommand(ctx, spec, argNames, argDefaults, args) {
+    ensureHelper(ctx, spec, argNames || [], argDefaults || [],
+      [el("block", { s: "doYield" })], "command");
+    var node = el("custom-block", { s: spec, scope: "local" });
+    (args || []).forEach(function (a) { node.add(a); });
+    return node;
+  }
   function variableReporter(name) {
     return el("block", { var: name });
   }

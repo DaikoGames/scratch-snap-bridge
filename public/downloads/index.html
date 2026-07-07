@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Scratch → Snap! Converter</title>
+<title>Scratch-To-Snap</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
@@ -22,7 +22,7 @@
 </style>
 </head>
 <body>
-  <h1>Scratch → Snap!</h1>
+  <h1>Scratch-To-Snap</h1>
   <p class="sub">Drop an <code>.sb3</code> file. Everything runs locally in your browser.</p>
 
   <div id="drop">
@@ -35,13 +35,13 @@
 
   <details>
     <summary>CLI usage</summary>
-    <pre>node converter.cjs path/to/project.sb3 [output.xml]
+    <pre>node converter.js path/to/project.sb3 [output.xml]
 
 # No npm install required — the CLI uses Node's built-in zlib.</pre>
   </details>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<script src="converter.cjs"></script>
+<script src="converter.js"></script>
 <script>
   const drop = document.getElementById("drop");
   const fileInput = document.getElementById("file");

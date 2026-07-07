@@ -687,23 +687,11 @@
       return el("block", { var: b.fields.VALUE || "" });
     },
 
-    // Snap! has no sound-effect blocks; emit no-op helper custom blocks so
-    // they appear labelled correctly instead of showing as "undefined".
-    sound_seteffectto: function (b, ctx) {
-      return helperCommand(ctx, "set sound effect %'effect' to %'value'",
-        ["effect", "value"], ["pitch", "0"],
-        [el("l", {}, String(b.fields.EFFECT || "PITCH").toLowerCase()),
-         argOrLiteral(b.inputs.VALUE, ctx, "0")]);
-    },
-    sound_changeeffectby: function (b, ctx) {
-      return helperCommand(ctx, "change sound effect %'effect' by %'value'",
-        ["effect", "value"], ["pitch", "10"],
-        [el("l", {}, String(b.fields.EFFECT || "PITCH").toLowerCase()),
-         argOrLiteral(b.inputs.VALUE, ctx, "10")]);
-    },
-    sound_cleareffects: function (b, ctx) {
-      return helperCommand(ctx, "clear sound effects", [], [], []);
-    },
+    // Snap! has no sound-effect primitive. Emit a plain no-op so these
+    // blocks don't wedge scripts. (Pitch/pan/etc. simply aren't representable.)
+    sound_seteffectto: function () { return el("block", { s: "doYield" }); },
+    sound_changeeffectby: function () { return el("block", { s: "doYield" }); },
+    sound_cleareffects: function () { return el("block", { s: "doYield" }); },
   };
 
   function buildBlock(block, ctx, shape) {
@@ -1017,7 +1005,7 @@ if (typeof require !== "undefined" && typeof module !== "undefined" && require.m
     var fs = require("fs");
     var args = process.argv.slice(2);
     if (args.length === 0 || args[0] === "-h" || args[0] === "--help") {
-      console.log("Usage: node converter.cjs <input.sb3> [output.xml]");
+      console.log("Usage: node converter.js <input.sb3> [output.xml]");
       process.exit(args.length === 0 ? 1 : 0);
     }
     var inputPath = args[0];

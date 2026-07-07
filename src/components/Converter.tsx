@@ -176,15 +176,14 @@ export function Converter() {
         </pre>
         <p className="mt-3 text-sm text-muted-foreground">
           Just two files. Double-click <code className="rounded bg-muted px-1 py-0.5">index.html</code>
-          to use it in the browser — no server, no build. The <code className="rounded bg-muted px-1 py-0.5">.cjs</code>
-          extension lets Node run the same file from the command line.
+          to use it in the browser — no server, no build. Node runs the same file from the command line.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <a href="/downloads/index.html" download>
             <Button variant="secondary" size="sm">index.html</Button>
           </a>
-          <a href="/downloads/converter.cjs" download>
-            <Button variant="secondary" size="sm">converter.cjs</Button>
+          <a href="/downloads/converter.js" download>
+            <Button variant="secondary" size="sm">converter.js</Button>
           </a>
         </div>
       </section>

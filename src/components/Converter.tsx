@@ -104,7 +104,7 @@ export function Converter() {
           Browser-only · No upload · Single JS file
         </div>
         <h1 className="text-balance text-5xl font-bold tracking-tight sm:text-6xl">
-          Scratch <span className="bg-[image:var(--gradient-hero)] bg-clip-text text-transparent">→</span> Snap!
+          Scratch<span className="bg-[image:var(--gradient-hero)] bg-clip-text text-transparent">-To-</span>Snap
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-pretty text-base text-muted-foreground">
           Drop a <code className="rounded bg-muted px-1.5 py-0.5 text-sm">.sb3</code> project and get a

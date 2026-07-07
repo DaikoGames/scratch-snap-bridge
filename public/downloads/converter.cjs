@@ -686,6 +686,24 @@
     argument_reporter_boolean: function (b) {
       return el("block", { var: b.fields.VALUE || "" });
     },
+
+    // Snap! has no sound-effect blocks; emit no-op helper custom blocks so
+    // they appear labelled correctly instead of showing as "undefined".
+    sound_seteffectto: function (b, ctx) {
+      return helperCommand(ctx, "set sound effect %'effect' to %'value'",
+        ["effect", "value"], ["pitch", "0"],
+        [el("l", {}, String(b.fields.EFFECT || "PITCH").toLowerCase()),
+         argOrLiteral(b.inputs.VALUE, ctx, "0")]);
+    },
+    sound_changeeffectby: function (b, ctx) {
+      return helperCommand(ctx, "change sound effect %'effect' by %'value'",
+        ["effect", "value"], ["pitch", "10"],
+        [el("l", {}, String(b.fields.EFFECT || "PITCH").toLowerCase()),
+         argOrLiteral(b.inputs.VALUE, ctx, "10")]);
+    },
+    sound_cleareffects: function (b, ctx) {
+      return helperCommand(ctx, "clear sound effects", [], [], []);
+    },
   };
 
   function buildBlock(block, ctx, shape) {

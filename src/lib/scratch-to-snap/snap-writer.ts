@@ -86,7 +86,7 @@ export function projectToSnapXml(project: IRProject, _projectName: string): stri
   for (const op of unknownOpcodes) project.warnings.push(op);
   const root = el(
     "project",
-    { name: "Project", app: "Snapinator", version: "1" },
+    { name: "Project", app: "Scratch-To-Snap", version: "1" },
     el("notes", {}, buildNotes(project)),
     el("thumbnail", {}),
     stageNode,

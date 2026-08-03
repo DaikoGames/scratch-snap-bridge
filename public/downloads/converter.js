@@ -844,7 +844,7 @@
     for (var k in unknown) project.warnings.push(k);
     var notes = "Converted from Scratch to Snap! by scratch-to-snap.js.";
     if (project.warnings.length) notes += "\nUnconverted opcodes: " + project.warnings.join(", ");
-    var root = el("project", { name: "Project", app: "Snapinator", version: "1" },
+    var root = el("project", { name: "Project", app: "Scratch-To-Snap", version: "1" },
       el("notes", {}, notes), el("thumbnail", {}), stageNode, buildVariables(project.stage));
     return root.toString();
   }

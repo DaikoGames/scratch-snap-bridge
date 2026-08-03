@@ -448,10 +448,16 @@
   }
   function helperCommand(ctx, spec, argNames, argDefaults, args) {
     ensureHelper(ctx, spec, argNames || [], argDefaults || [],
-      [el("block", { s: "doYield" })], "command");
+      [noOpCommand()], "command");
     var node = el("custom-block", { s: spec, scope: "local" });
     (args || []).forEach(function (a) { node.add(a); });
     return node;
+  }
+  function noOpCommand() {
+    // Snap! has no "do nothing" primitive; `doYield` exists internally but has
+    // no block spec, so it imports as *undefined*. `wait 0 secs` is a real
+    // palette block and is a harmless no-op.
+    return el("block", { s: "doWait" }, el("l", {}, "0"));
   }
   function variableReporter(name) {
     return el("block", { var: name });
@@ -687,11 +693,25 @@
       return el("block", { var: b.fields.VALUE || "" });
     },
 
-    // Snap! has no sound-effect primitive. Emit a plain no-op so these
-    // blocks don't wedge scripts. (Pitch/pan/etc. simply aren't representable.)
-    sound_seteffectto: function () { return el("block", { s: "doYield" }); },
-    sound_changeeffectby: function () { return el("block", { s: "doYield" }); },
-    sound_cleareffects: function () { return el("block", { s: "doYield" }); },
+    // Scratch has PITCH and PAN sound effects. Snap! only has pan
+    // (setPan/changePan); pitch has no equivalent, so it becomes a no-op.
+    sound_seteffectto: function (b, ctx) {
+      var eff = String(b.fields.EFFECT || "").toUpperCase();
+      if (eff === "PAN") {
+        return el("block", { s: "setPan" }, buildArg(b.inputs.VALUE, ctx));
+      }
+      return noOpCommand();
+    },
+    sound_changeeffectby: function (b, ctx) {
+      var eff = String(b.fields.EFFECT || "").toUpperCase();
+      if (eff === "PAN") {
+        return el("block", { s: "changePan" }, buildArg(b.inputs.VALUE, ctx));
+      }
+      return noOpCommand();
+    },
+    sound_cleareffects: function () {
+      return el("block", { s: "setPan" }, el("l", {}, "0"));
+    },
   };
 
   function buildBlock(block, ctx, shape) {
@@ -712,9 +732,9 @@
     ctx.unknownOpcodes[block.opcode] = true;
     // Emit a harmless placeholder so an unknown block doesn't wedge the whole
     // script. In reporter slots we return an empty literal; in stack position
-    // we return a no-op doYield block.
+    // we return a harmless no-op block.
     if (shape === "reporter") return el("l", {}, "");
-    return el("block", { s: "doYield" });
+    return noOpCommand();
   }
 
   function buildArg(arg, ctx) {
